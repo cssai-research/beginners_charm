@@ -1,0 +1,21 @@
+# GCP BigQuery
+google-cloud-bigquery
+google-cloud-bigquery-storage
+google-cloud-storage
+db-dtypes
+
+# Data manipulation
+numpy
+scipy
+scikit-learn
+pandas
+matplotlib
+seaborn
+tabulate
+statsmodels
+
+# Notebook tools
+jupyter
+jupyterlab
+tqdm
+ipywidgets
