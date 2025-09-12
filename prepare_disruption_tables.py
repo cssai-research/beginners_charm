@@ -657,7 +657,38 @@ def clean_data():
     for row in count_result:
         print(f"Found {row.count:,} unique problematic author IDs")
 
-    # Remove papers by problematic authors
+    # Get initial count of All_Yearly_Author_Profiles for tracking
+    initial_profiles_count_query = f"""
+    SELECT COUNT(*) as count FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.All_Yearly_Author_Profiles`
+    """
+    initial_profiles_job = client.query(initial_profiles_count_query)
+    initial_profiles_results = initial_profiles_job.result()
+    for row in initial_profiles_results:
+        initial_profiles_count = row.count
+        print(f"Initial All_Yearly_Author_Profiles count: {initial_profiles_count:,}")
+
+    # Remove problematic authors from All_Yearly_Author_Profiles table
+    delete_profiles_query = f"""
+    DELETE FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.All_Yearly_Author_Profiles`
+    WHERE authorid IN (
+        SELECT authorid FROM `{temp_problematic_authors_table}`
+    )
+    """
+
+    print("Removing problematic authors from All_Yearly_Author_Profiles table...")
+    delete_profiles_job = client.query(delete_profiles_query)
+    delete_profiles_job.result()
+
+    # Count remaining profiles after cleanup
+    after_profiles_cleanup_job = client.query(initial_profiles_count_query)
+    after_profiles_results = after_profiles_cleanup_job.result()
+    for row in after_profiles_results:
+        profiles_removed = initial_profiles_count - row.count
+        print(
+            f"All_Yearly_Author_Profiles after cleanup: {row.count:,} entries remaining ({profiles_removed:,} removed)"
+        )
+
+    # Remove papers by problematic authors from disruption_analysis
     delete_papers_query = f"""
     DELETE FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.disruption_analysis`
     WHERE paperid IN (
@@ -686,8 +717,9 @@ def clean_data():
         print(f"Initial entries: {initial_count:,}")
         print(f"Final entries: {row.count:,}")
         print(
-            f"Total removed: {total_removed:,} ({(total_removed/initial_count)*100:.2f}%)"
+            f"disruption_analysis - Total removed: {total_removed:,} ({(total_removed/initial_count)*100:.2f}%)"
         )
+        print(f"All_Yearly_Author_Profiles - Problematic authors removed: {profiles_removed:,}")
         print(f"=" * 60)
 
     # Clean up temporary table
