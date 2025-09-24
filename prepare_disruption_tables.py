@@ -719,7 +719,9 @@ def clean_data():
         print(
             f"disruption_analysis - Total removed: {total_removed:,} ({(total_removed/initial_count)*100:.2f}%)"
         )
-        print(f"All_Yearly_Author_Profiles - Problematic authors removed: {profiles_removed:,}")
+        print(
+            f"All_Yearly_Author_Profiles - Problematic authors removed: {profiles_removed:,}"
+        )
         print(f"=" * 60)
 
     # Clean up temporary table
