@@ -1,17 +1,18 @@
 from google.cloud import bigquery, storage
-import io
+import tempfile
+import os
 
 
 def export_bq_table_to_csv(
     bq_table_name,
-    project_id="scisci-cssai-usf",
+    project_id="scisciresearch-mahdee",
     dataset_id="Disruption",
-    bucket_name="sciscinet-data",
+    bucket_name="scisciresearch-mahdee",
     output_folder="exported_data",
     cleanup_intermediate=False,
 ):
     """
-    Export a BigQuery table to a CSV file in GCS.
+    Export a BigQuery table to a CSV file in GCS (memory-efficient version).
 
     Args:
         bq_table_name (str): Name of the BigQuery table to export
@@ -45,58 +46,60 @@ def export_bq_table_to_csv(
         intermediate_uri,
         location="US",
     )
-
-    extract_job.result()  # Wait for the job to complete
+    extract_job.result()
     print("Export to GCS intermediate location completed.")
 
     # Get list of intermediate files
     bucket = gcs_client.bucket(bucket_name)
-    intermediate_blobs = list(bucket.list_blobs(prefix=intermediate_prefix))
+    intermediate_blobs = sorted(
+        list(bucket.list_blobs(prefix=intermediate_prefix)),
+        key=lambda x: x.name,
+    )
 
     if not intermediate_blobs:
         raise ValueError("No files found in intermediate directory")
 
-    # Sort blobs by name to ensure consistent ordering
-    intermediate_blobs = sorted(intermediate_blobs, key=lambda x: x.name)
-
     print(f"Found {len(intermediate_blobs)} intermediate files to combine")
 
-    # Combine files directly in memory and upload to GCS
-    combined_content = io.StringIO()
+    # Use a temporary file instead of StringIO to avoid memory explosion
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, encoding="utf-8") as tmp_file:
+        for i, blob in enumerate(intermediate_blobs):
+            print(f"Processing file {i+1}/{len(intermediate_blobs)}: {blob.name}")
 
-    for i, blob in enumerate(intermediate_blobs):
-        print(f"Processing file {i+1}/{len(intermediate_blobs)}: {blob.name}")
+            # Download blob in chunks
+            content = blob.download_as_text(encoding="utf-8")
+            lines = content.splitlines()
 
-        # Download blob content as text
-        content = blob.download_as_text(encoding="utf-8")
+            if not lines:
+                continue
 
-        if i == 0:
-            # Include header for first file
-            combined_content.write(content)
-        else:
-            # Skip header line for subsequent files
-            lines = content.split("\n")
-            if len(lines) > 1:  # Ensure there's more than just a header
-                combined_content.write("\n".join(lines[1:]))
+            # Write header for the first file, skip for the rest
+            if i == 0:
+                tmp_file.write("\n".join(lines))
+            else:
+                tmp_file.write("\n" + "\n".join(lines[1:]))
 
-    # Upload combined content to GCS
-    output_blob = bucket.blob(output_path)
-    combined_content.seek(0)  # Reset to beginning of StringIO
-    output_blob.upload_from_string(combined_content.getvalue(), content_type="text/csv")
+        tmp_file.flush()
 
-    print(f"Successfully created combined CSV at: {output_uri}")
+        print(f"Uploading combined file to GCS: {output_uri}")
+        output_blob = bucket.blob(output_path)
+        output_blob.upload_from_filename(tmp_file.name, content_type="text/csv")
 
-    # Clean up intermediate files
+    print(f"✅ Successfully created combined CSV at: {output_uri}")
+
+    # Clean up intermediate files if requested
     if cleanup_intermediate:
         print("Cleaning up intermediate files...")
         for blob in intermediate_blobs:
             try:
                 blob.delete()
-                print(f"Deleted intermediate file: {blob.name}")
+                print(f"Deleted: {blob.name}")
             except Exception as e:
                 print(f"Warning: Could not delete {blob.name}: {e}")
 
-    combined_content.close()
+    # Delete temporary local file
+    os.remove(tmp_file.name)
+
     return output_uri
 
 

@@ -3,11 +3,11 @@ import time
 from google.cloud import bigquery
 
 ## Constants
-BIGQUERY_PROJECT = "scisci-cssai-usf"  # replace this with your GCP project name
+BIGQUERY_PROJECT = "scisciresearch-mahdee"  # replace this with your GCP project name
 SCISCINET_DATASET = "SciSciNet"
 DISRUPTION_DATASET = "Disruption"
 
-MIN_YEAR = 1961
+MIN_YEAR = 1901
 MAX_YEAR = 2020
 
 os.environ["GOOGLE_CLOUD_PROJECT"] = BIGQUERY_PROJECT
