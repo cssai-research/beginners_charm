@@ -23,7 +23,9 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Set pandas options for memory efficiency
 pd.options.mode.chained_assignment = None
-pd.set_option('mode.copy_on_write', True)
+pd.set_option("mode.copy_on_write", True)
+
+START_YEAR = 1941
 
 
 def timer(func):
@@ -107,8 +109,12 @@ def load_full_disruption_data(
     # --- Preprocessing ---
     df = df[df.doctype == "article"]
     df = df[df["team_size"] <= 40]
-    df = df[df["year"] >= 1901]
+    df["year"] = df["year"].astype(int)
+    df["decade_start"] = ((df["year"] - 1) // 10) * 10 + 1
+    df["decade_end"] = df["decade_start"] + 9
+    df["decade"] = df["decade_start"].astype(str) + "-" + df["decade_end"].astype(str)
 
+    # Removing problematic data (if any)
     df = df[
         ~((df["first_time_author_ratio"] == 1) & (df["avg_career_age"] > 0))
         & ~(
@@ -122,11 +128,8 @@ def load_full_disruption_data(
         )
     ]
 
-    df["year"] = df["year"].astype(int)
-    df["decade_start"] = ((df["year"] - 1) // 10) * 10 + 1
-    df["decade_end"] = df["decade_start"] + 9
-    df["decade"] = df["decade_start"].astype(str) + "-" + df["decade_end"].astype(str)
-
+    # In the preperation script early_career = 1-5 and mid_career = 6-10
+    # In analysis we will use early_career = 1-10
     df["early_career_author_ratio"] = (
         df["early_career_author_ratio"] + df["mid_career_author_ratio"]
     )
@@ -137,6 +140,12 @@ def load_full_disruption_data(
         np.nan,
         (df["early_author_avg_disruption"] + df["mid_author_avg_disruption"]) / 2,
     )
+
+    print("Number of Papers by Decade:")
+    print(df["decade"].value_counts().sort_index())
+
+    print("Due to low number of data, we are starting from ", START_YEAR)
+    df = df[df["year"] >= START_YEAR]
 
     df.drop(
         columns=[
@@ -392,6 +401,7 @@ def setup_plotting_style_mahdee():
     plt.rcParams["savefig.format"] = "pdf"
     plt.rcParams["savefig.bbox"] = "tight"
     plt.rcParams["savefig.pad_inches"] = 0.1
+
 
 def setup_plotting_style():
     sns.set(context="talk", style="whitegrid")
@@ -1686,7 +1696,7 @@ def bin_first_time_author_ratio(
     Create K equal-width bins - INPLACE modification to save memory
     """
     df[ratio_col] = df[ratio_col].astype(float).clip(0.0, 1.0)
-    
+
     bins = np.linspace(0.0, 1.0, k + 1)
     labels = [f"{bins[i]:.2f} - {bins[i+1]:.2f}" for i in range(k)]
 
@@ -1697,10 +1707,10 @@ def bin_first_time_author_ratio(
         include_lowest=True,
         right=True,
     )
-    
+
     del bins, labels
     gc.collect()
-    
+
     return df
 
 
@@ -1710,11 +1720,11 @@ def plot_atyp_combination(
     save_path="Figures/Sup_4_atyp_combination.pdf",
 ):
     gc.collect()
-    
+
     # Work with only necessary columns
-    df_slim = df[[group_column, 'Atyp_Median_Z']].copy()
+    df_slim = df[[group_column, "Atyp_Median_Z"]].copy()
     gc.collect()
-    
+
     fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
     gc.collect()
 
@@ -1748,13 +1758,27 @@ def plot_atyp_combination(
         plt.setp(legend.get_title(), fontsize="small")
 
     # Cache min/max before multiple accesses
-    atyp_min = df['Atyp_Median_Z'].min()
-    atyp_max = df['Atyp_Median_Z'].max()
-    
-    ax.text(-40, 0.95, "Novel\nCombinations", color="black", ha="left", va="top",
-            transform=ax.get_xaxis_transform())
-    ax.text(1, 0.95, "Conventional\nCombination", color="black", ha="left", va="top",
-            transform=ax.get_xaxis_transform())
+    atyp_min = df["Atyp_Median_Z"].min()
+    atyp_max = df["Atyp_Median_Z"].max()
+
+    ax.text(
+        -40,
+        0.95,
+        "Novel\nCombinations",
+        color="black",
+        ha="left",
+        va="top",
+        transform=ax.get_xaxis_transform(),
+    )
+    ax.text(
+        1,
+        0.95,
+        "Conventional\nCombination",
+        color="black",
+        ha="left",
+        va="top",
+        transform=ax.get_xaxis_transform(),
+    )
     ax.axvspan(xmin=atyp_min, xmax=0, facecolor="lightblue", alpha=0.1)
     ax.axvspan(xmin=0, xmax=atyp_max, facecolor="pink", alpha=0.05)
 
@@ -2224,6 +2248,7 @@ def plot_expanded_disruption_heatmaps(
     # Collect garbage
     gc.collect()
     return fig, axes, pivot_dfs
+
 
 def _pretty_axis_label(colname: str) -> str:
     return (
@@ -3936,9 +3961,10 @@ def main():
     del res_df, latex
     gc.collect()
 
-
     ######### Early-Career and disruptive collaborators are linked to greter disruption in beginner-heavy teams ######
-    print("Section: Early-Career and disruptive collaborators are linked to greater disruption in beginner-heavy teams")
+    print(
+        "Section: Early-Career and disruptive collaborators are linked to greater disruption in beginner-heavy teams"
+    )
     fig, axes, pivot_dfs_disruption = plot_expanded_disruption_heatmaps(
         final_df,
         target_column="disruption_percentile",
@@ -3988,7 +4014,6 @@ def main():
         with open(f"Final_Figures/Final_disruption_matrix_panels_{i}.tex", "w") as f:
             f.write(tex)
 
-
     fig, axes, pivot_dfs = plot_expanded_disruption_heatmaps(
         final_df,
         target_column="Atyp_Median_Z",
@@ -4001,7 +4026,6 @@ def main():
         min_group_size=100,
         save_path="Final_Figures/Final_Atyp_Median_Z_heatmaps_by_author_ratios.pdf",
     )
-
 
     coauthor_groups_to_plot = [
         "60-70 percentile",
@@ -4051,12 +4075,13 @@ def main():
         top_50_mean.early_career_author_count + top_50_mean.senior_author_count
     )
 
-    count = (top_50_mean.first_time_author_count >= top_50_mean.other_author_count).sum()
+    count = (
+        top_50_mean.first_time_author_count >= top_50_mean.other_author_count
+    ).sum()
     print("Count where beginner_author_count >= other_author_count:", count)
 
     count = (top_50_mean.first_time_author_count > top_50_mean.other_author_count).sum()
     print("Count where beginner_author_count > other_author_count:", count)
-
 
     ######## Highly disruptive papers by beginner-heavy teams are highly cited
     fig, axes = plot_team_size_by_career_ratios_grid(
@@ -4069,7 +4094,6 @@ def main():
     plt.close(fig)
     del fig, axes
     gc.collect()
-
 
     compute_correlations_to_disk(
         final_df,
@@ -4096,7 +4120,6 @@ def main():
     )
     gc.collect()
 
-
     res_quartiles = plot_citation_share_by_disruption_quartiles(
         final_df,
         disruption_col="disruption_percentile",
@@ -4107,7 +4130,6 @@ def main():
         fig_dir="Final_Figures",
     )
     gc.collect()
-    
 
 
 if __name__ == "__main__":
