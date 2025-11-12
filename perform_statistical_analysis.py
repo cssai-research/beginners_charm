@@ -657,7 +657,7 @@ def plot_team_size_by_career_ratios_grid(
     # Save figure if path is provided
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
-    
+
     # Close figure and clean up
     plt.close(fig)
     gc.collect()
@@ -960,11 +960,13 @@ def plot_disruption_by_team_size(
     n_bins=20,
     save_path=None,
 ):
-    df = df.copy()
+    required_cols = [team_size_column, "first_time_author_ratio", target_column]
+    df = df[required_cols].copy()
     df["team_size_category"] = df[team_size_column].apply(_categorize_team_size)
+    df = df[df["team_size_category"].isin(["1-5", "6-10", "11-15", "16-30"])].copy()
 
     # Define the order of team size categories for consistent visualization
-    team_size_order = ["1-5", "6-10", "11-15", "16-40"]
+    team_size_order = ["1-5", "6-10", "11-15", "16-30"]
     bin_edges = np.linspace(0, 1, n_bins + 1)
 
     results = []
@@ -1005,6 +1007,8 @@ def plot_disruption_by_team_size(
                 )
 
     group_stats = pd.DataFrame(results)
+    del df, results
+    gc.collect()
 
     group_stats["median_ci_lower"] = group_stats["median"] - 1.96 * group_stats["sem"]
     group_stats["median_ci_upper"] = group_stats["median"] + 1.96 * group_stats["sem"]
@@ -1069,7 +1073,7 @@ def plot_disruption_by_team_size(
     # Save figure if path is provided
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
-    
+
     # Close figure and clean up
     plt.close(fig)
     gc.collect()
@@ -1089,8 +1093,11 @@ def _categorize_team_size(size):
         return "6-10"
     elif size <= 15:
         return "11-15"
+    elif size <= 30:
+        return "16-30"
     else:
-        return "16-40"
+        return "other"
+    # Note from Mahdee: Kept team_size up to 30 because, later values doesn't shwo statistical significance
 
 
 @timer
@@ -1243,6 +1250,10 @@ def plot_firsttime_authors_by_decade_grid(
                     }
                 )
 
+            # Note: The results list becomes empty when none of the data points for a particular decade within a team size meet the minimum group size requirements.
+            if not results:
+                continue
+
             group_stats = pd.DataFrame(results)
 
             # Apply minimum sample threshold check
@@ -1352,7 +1363,7 @@ def plot_firsttime_authors_by_decade_grid(
     # Save figure if path is provided
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
-    
+
     # Close figure and clean up
     plt.close(fig)
     gc.collect()
@@ -1384,6 +1395,7 @@ def plot_firsttime_authors_by_field_grid(
     and disruption score across different fields for different team sizes.
     """
     setup_plotting_style()
+    gc.collect()
 
     fig, axes = plt.subplots(2, 4, figsize=(24, 12), sharex=True, sharey=True, dpi=300)
     axes_flat = axes.flatten()
@@ -1413,18 +1425,23 @@ def plot_firsttime_authors_by_field_grid(
 
     needed_columns = [author_ratio_column, target_column, "team_size", field_column]
     df_slim = df[needed_columns].copy()
+    gc.collect()
 
     for idx, team_size in enumerate(team_sizes):
         ax = axes_flat[idx]
         subset = df_slim[df_slim["team_size"] == team_size].copy()
 
         if len(subset) == 0:
+            del subset
+            gc.collect()
             continue
 
         for field in fields:
             field_subset = subset[subset[field_column] == field].copy()
 
             if len(field_subset) == 0:
+                del field_subset
+                gc.collect()
                 continue
 
             results = []
@@ -1443,6 +1460,7 @@ def plot_firsttime_authors_by_field_grid(
                     boot_meds = np.median(boot, axis=1)
                     lower = np.percentile(boot_meds, (100 - ci) / 2)
                     upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    del boot, boot_meds
                 else:
                     z = 1.96
                     lower = zero_median - z * zero_sem
@@ -1465,6 +1483,8 @@ def plot_firsttime_authors_by_field_grid(
                 [author_ratio_column, target_column]
             ].dropna()
             if len(values) == 0:
+                del values, field_subset
+                gc.collect()
                 continue
 
             # Binning
@@ -1473,6 +1493,7 @@ def plot_firsttime_authors_by_field_grid(
                 values["bin"] = pd.cut(
                     values[author_ratio_column], bins=bin_edges, include_lowest=True
                 )
+                del bin_edges
             else:
                 values["bin"] = pd.qcut(
                     values[author_ratio_column], q=n_bins, duplicates="drop"
@@ -1495,6 +1516,7 @@ def plot_firsttime_authors_by_field_grid(
                     boot_meds = np.median(boot, axis=1)
                     lower = np.percentile(boot_meds, (100 - ci) / 2)
                     upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    del boot, boot_meds
                 else:
                     z = 1.96
                     lower = median - z * sem
@@ -1516,11 +1538,23 @@ def plot_firsttime_authors_by_field_grid(
                     }
                 )
 
+            del values, grouped
+            gc.collect()
+
+            if not results:
+                del field_subset
+                gc.collect()
+                continue
+
             group_stats = pd.DataFrame(results)
 
             # Apply minimum sample threshold check
             filtered_stats = group_stats[group_stats["count"] >= min_sample_threshold]
+            del group_stats
+
             if filtered_stats.empty:
+                del filtered_stats, field_subset
+                gc.collect()
                 continue
 
             # Plot the line
@@ -1545,6 +1579,7 @@ def plot_firsttime_authors_by_field_grid(
                     color=field_colors[field],
                 )
 
+            del filtered_stats, field_subset
             gc.collect()
 
         # Customize subplot
@@ -1561,9 +1596,11 @@ def plot_firsttime_authors_by_field_grid(
 
         sns.despine(ax=ax, top=True, right=True)
 
-        # Clear memory
         del subset
         gc.collect()
+
+    del df_slim
+    gc.collect()
 
     # Add a single legend for the entire figure
     handles, labels_list = axes_flat[0].get_legend_handles_labels()
@@ -1582,7 +1619,7 @@ def plot_firsttime_authors_by_field_grid(
         if ax.get_legend() is not None:
             ax.get_legend().remove()
 
-    # Handle empty subplots if less than 12 team sizes
+    # Handle empty subplots if less than 8 team sizes
     for i in range(len(team_sizes), len(axes_flat)):
         axes_flat[i].set_visible(False)
 
@@ -1627,9 +1664,275 @@ def plot_firsttime_authors_by_field_grid(
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
     plt.close(fig)
+    del axes_flat, colors, field_colors, markers, handles, labels_list
+    gc.collect()
+    return fig, axes
+
+
+def bin_first_time_author_ratio(
+    df,
+    ratio_col="first_time_author_ratio",
+    out_col="first_time_author_ratio_group",
+    k=10,
+):
+    """
+    Create K equal-width bins over [0,1] for the ratio column and write labels like '0.00 - 0.10'.
+    Ensures 0 goes into the first bin and 1 goes into the last bin (include_lowest=True, right=True).
+    """
+    df = df.copy()
+    df[ratio_col] = df[ratio_col].astype(float).clip(0.0, 1.0)
+
+    # Equal-width bin edges
+    bins = np.linspace(0.0, 1.0, k + 1)
+    # Labels like '0.00 - 0.10'
+    labels = [f"{bins[i]:.2f} - {bins[i+1]:.2f}" for i in range(k)]
+
+    df[out_col] = pd.cut(
+        df[ratio_col],
+        bins=bins,
+        labels=labels,
+        include_lowest=True,  # includes 0 in first bin
+        right=True,  # includes the right edge; 1.00 goes into last bin
+    )
+    return df
+
+
+def plot_atyp_combination(
+    df,
+    group_column="first_time_author_ratio_group",
+    save_path="Figures/Sup_4_atyp_combination.pdf",
+):
+    gc.collect()
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
     gc.collect()
 
-    return fig, axes
+    # Use the categorical order (so legend/order matches the bins)
+    if pd.api.types.is_categorical_dtype(df[group_column]):
+        hue_order = list(df[group_column].cat.categories)
+    else:
+        hue_order = sorted(df[group_column].dropna().unique().tolist())
+
+    sns.ecdfplot(
+        data=df,
+        x="atyp_median_z",
+        hue=group_column,
+        hue_order=hue_order,
+        ax=ax,
+        palette="flare",
+    )
+    gc.collect()
+
+    ax.set_xscale("symlog")
+    ax.set_xlabel("Atyp Median")
+    ax.set_ylabel("Cumulative Distribution")
+    ax.axvline(x=0, color="red", linestyle="--", linewidth=2)
+
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.set_title("Beginner Author Ratio")
+        legend.set_bbox_to_anchor((1.0, 0.0))
+        legend.set_loc("lower right")
+        plt.setp(legend.get_texts(), fontsize="small")
+        plt.setp(legend.get_title(), fontsize="small")
+
+    # Annotations + shading
+    ax.text(
+        -40,
+        0.95,
+        "Novel\nCombinations",
+        color="black",
+        ha="left",
+        va="top",
+        transform=ax.get_xaxis_transform(),
+    )
+    ax.text(
+        1,
+        0.95,
+        "Conventional\nCombination",
+        color="black",
+        ha="left",
+        va="top",
+        transform=ax.get_xaxis_transform(),
+    )
+    ax.axvspan(xmin=df["atyp_median_z"].min(), xmax=0, facecolor="lightblue", alpha=0.1)
+    ax.axvspan(xmin=0, xmax=df["atyp_median_z"].max(), facecolor="pink", alpha=0.05)
+
+    # Save high-res PDF
+    if save_path:
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, bbox_inches="tight", dpi=300)
+
+    gc.collect()
+    return fig, ax
+
+
+def run_ks_tests_pairwise(
+    df,
+    group_col="first_time_author_ratio_group",
+    value_col="atyp_median_z",
+    results_dir="Results",
+    table_name="PNAS_KS_atyp_median_z_k3",
+):
+    Path(results_dir).mkdir(parents=True, exist_ok=True)
+
+    # Clean input
+    x = df[[group_col, value_col]].copy()
+    x = x[np.isfinite(x[value_col])].dropna(subset=[group_col, value_col])
+
+    # Keep category order if present; else sort
+    if pd.api.types.is_categorical_dtype(x[group_col]):
+        groups = [g for g in x[group_col].cat.categories if g in x[group_col].unique()]
+    else:
+        groups = sorted(x[group_col].dropna().unique().tolist())
+
+    rows = []
+    for a, b in combinations(groups, 2):
+        xa = x.loc[x[group_col] == a, value_col].to_numpy()
+        xb = x.loc[x[group_col] == b, value_col].to_numpy()
+        if len(xa) < 2 or len(xb) < 2:
+            D, p = np.nan, np.nan
+        else:
+            # Two-sided KS test
+            D, p = ks_2samp(xa, xb, alternative="two-sided", mode="auto")
+
+        rows.append(
+            {
+                "group_a": str(a),
+                "group_b": str(b),
+                "n_a": int(len(xa)),
+                "n_b": int(len(xb)),
+                "D": float(D) if D == D else np.nan,  # keep NaN if not computed
+                "p_value": float(p) if p == p else np.nan,
+                # Simple descriptives to aid interpretation
+                "median_a": float(np.median(xa)) if len(xa) else np.nan,
+                "median_b": float(np.median(xb)) if len(xb) else np.nan,
+                "median_diff": (
+                    (float(np.median(xa)) - float(np.median(xb)))
+                    if (len(xa) and len(xb))
+                    else np.nan
+                ),
+            }
+        )
+
+    res = pd.DataFrame(rows)
+
+    # Multiple testing corrections (m = number of pairwise tests)
+    m = len(res)
+
+    # Bonferroni
+    res["p_bonferroni"] = (res["p_value"] * m).clip(upper=1.0)
+
+    # Holm (step-down)
+    def holm_stepdown(pvals):
+        pvals = np.asarray(pvals, dtype=float)
+        order = np.argsort(pvals)
+        adj = np.empty_like(pvals)
+        running_max = 0.0
+        for i, idx in enumerate(order):
+            raw_adj = (m - i) * pvals[idx]
+            running_max = max(running_max, raw_adj)
+            adj[idx] = min(1.0, running_max)
+        return adj
+
+    res["p_holm"] = holm_stepdown(res["p_value"].to_numpy())
+
+    # Benjamini–Hochberg FDR
+    def fdr_bh(pvals):
+        pvals = np.asarray(pvals, dtype=float)
+        order = np.argsort(pvals)
+        p_sorted = pvals[order]
+        q = np.empty_like(pvals)
+        running_min = 1.0
+        for i in range(m - 1, -1, -1):
+            q_i = p_sorted[i] * m / (i + 1)
+            running_min = min(running_min, q_i)
+            q[i] = running_min
+        out = np.empty_like(pvals)
+        out[order] = np.clip(q, 0, 1)
+        return out
+
+    res["q_bh"] = fdr_bh(res["p_value"].to_numpy())
+
+    # Significance stars (Holm-adjusted)
+    def stars(p):
+        if np.isnan(p):
+            return "n/a"
+        if p < 1e-3:
+            return "***"
+        if p < 1e-2:
+            return "**"
+        if p < 0.05:
+            return "*"
+        return "ns"
+
+    res["signif_holm"] = res["p_holm"].apply(stars)
+
+    # Pretty rounding for export/print
+    printable = res.copy()
+    for col in [
+        "D",
+        "p_value",
+        "p_bonferroni",
+        "p_holm",
+        "q_bh",
+        "median_a",
+        "median_b",
+        "median_diff",
+    ]:
+        printable[col] = printable[col].astype(float).round(4)
+
+    # Save CSV + LaTeX
+    csv_path = Path(results_dir) / f"{table_name}.csv"
+    tex_path = Path(results_dir) / f"{table_name}.tex"
+
+    printable.to_csv(csv_path, index=False)
+
+    # Minimal LaTeX table (PNAS-ready for SI)
+    latex_cols = [
+        "group_a",
+        "group_b",
+        "n_a",
+        "n_b",
+        "D",
+        "p_value",
+        "p_bonferroni",
+        "p_holm",
+        "q_bh",
+        "signif_holm",
+        "median_a",
+        "median_b",
+        "median_diff",
+    ]
+    latex_table = printable[latex_cols].to_latex(
+        index=False,
+        escape=True,
+        caption="Two-sample Kolmogorov–Smirnov tests comparing the distributions of $\\it{Atyp\\_Median\\_Z}$ across first-time author ratio quartiles (k=3). Reported are sample sizes, KS statistic $D$, raw and adjusted $p$-values (Bonferroni, Holm), FDR $q$-values (Benjamini–Hochberg), and group medians.",
+        label="tab:ks_atyp_median_k3",
+    )
+    Path(tex_path).write_text(latex_table)
+
+    # Console summary (publication-style)
+    print(
+        "\nTwo-sample Kolmogorov–Smirnov tests (Atyp_Median_Z by first-time author ratio quartiles)"
+    )
+    # Overall Ns per group
+    group_counts = x.groupby(group_col)[value_col].size()
+    print("Group sizes (n):")
+    for g in groups:
+        print(f"  {g}: {int(group_counts.get(g, 0))}")
+    print("\nPairwise comparisons (Holm-adjusted):")
+    for _, r in printable.iterrows():
+        print(
+            f"  {r['group_a']} vs {r['group_b']}: "
+            f"D={r['D']:.4f}, p={r['p_value']:.4g}, Holm p={r['p_holm']:.4g} {r['signif_holm']}; "
+            f"n_a={int(r['n_a'])}, n_b={int(r['n_b'])}; "
+            f"median_a={r['median_a']:.4f}, median_b={r['median_b']:.4f}, Δmedian={r['median_diff']:.4f}"
+        )
+
+    print(f"\nSaved CSV: {csv_path}")
+    print(f"Saved LaTeX: {tex_path}")
+
+    return res
 
 
 if __name__ == "__main__":
@@ -1641,6 +1944,9 @@ if __name__ == "__main__":
     final_df = load_full_disruption_data()
 
     ################### Teams with higher beginner-author ratios are more disruptive and innovative ###################
+    print(
+        "Section: Teams with higher beginner-author ratios are more disruptive and innovative"
+    )
     print("Correlation between first_time_author_ratio and disruption:")
     print(
         find_correlation_coefficient(
@@ -1689,7 +1995,7 @@ if __name__ == "__main__":
     )
     gc.collect()
 
-    #### Beginner Author Ratio vs Disruption Across Team Sizes ####
+    ### Beginner Author Ratio vs Disruption Across Team Sizes ####
     print(
         find_correlation_coefficient(
             final_df, "first_time_author_ratio", "disruption_percentile", "team_size"
@@ -1706,7 +2012,7 @@ if __name__ == "__main__":
     )
     gc.collect()
 
-    #### Beginner Author Ratio vs Disruption Across Decades ####
+    ### Beginner Author Ratio vs Disruption Across Decades ####
     print(
         find_correlation_coefficient(
             final_df, "first_time_author_ratio", "disruption_percentile", "decade"
@@ -1787,4 +2093,76 @@ if __name__ == "__main__":
         save_path="Final_Figures/Final_Disruption_by_First_Time_Author_Ratio_fields_1-8.pdf",
     )
     del fig, axes
+    gc.collect()
+
+    ########### Atypical Combination ##################
+    print("Section: Atypical Combination")
+    final_df = bin_first_time_author_ratio(
+        final_df,
+        ratio_col="first_time_author_ratio",
+        out_col="first_time_author_ratio_group",
+        k=4,
+    )
+
+    final_df["atyp_median_z"] = final_df["Atyp_Median_Z"].astype(float)
+
+    fig, ax = plot_atyp_combination(
+        final_df,
+        group_column="first_time_author_ratio_group",
+        save_path="Final_Figures/Final_atyp_combination_4bins.pdf",
+    )
+    del fig, ax
+    gc.collect()
+
+    fig, axes = plot_team_size_by_career_ratios_grid(
+        df=final_df,
+        target_column="Atyp_Median_Z_percentile",
+        ylim=(0, 100),
+        save_path="Final_Figures/Final_All_Career-Age_Ratio_And_Atyp_Z.pdf",
+    )
+    plt.close(fig)
+    del fig, axes
+    gc.collect()
+
+    _ = run_ks_tests_pairwise(
+        final_df,
+        group_col="first_time_author_ratio_group",
+        value_col="atyp_median_z",
+        results_dir="Final_Figures",
+        table_name="Final_KS_atyp_median_z_k4",
+    )
+    gc.collect()
+
+    res_df, latex = kendall_tau_to_pnas_si_table_with_ci(
+        df=final_df,
+        target_column="avg_reference_popularity_percentile",
+        min_group_size=5,
+        min_sample_threshold=50,
+        n_bins=10,
+        binning_method="equal",  # or "quantile"
+        correction="fdr_bh",  # "fdr_bh", "bonferroni", or None
+        save_path="Final_Figures/Final_Kendall_Tau_Table_withCI_referencepop.tex",
+        add_ci=True,
+        ci_level=95,
+        n_boot=2000,
+        random_state=123,
+    )
+    del res_df, latex
+    gc.collect()
+
+    res_df, latex = kendall_tau_to_pnas_si_table_with_ci(
+        df=final_df,
+        target_column="avg_reference_age_percentile",
+        min_group_size=5,
+        min_sample_threshold=50,
+        n_bins=10,
+        binning_method="equal",  # or "quantile"
+        correction="fdr_bh",  # "fdr_bh", "bonferroni", or None
+        save_path="Final_Figures/Final_Kendall_Tau_Table_withCI_referenceage.tex",
+        add_ci=True,
+        ci_level=95,
+        n_boot=2000,
+        random_state=123,
+    )
+    del res_df, latex
     gc.collect()
