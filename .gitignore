@@ -133,3 +133,8 @@ venv.bak/
 
 # large files
 disruption_analysis.csv
+
+
+# intermediate data
+intermediate_data/
+out_df_filtered.csv

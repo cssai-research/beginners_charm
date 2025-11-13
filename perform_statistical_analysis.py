@@ -8,6 +8,8 @@ import json
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
+import seaborn as sns
+from matplotlib.colors import Normalize
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from pathlib import Path
 from itertools import combinations
@@ -49,7 +51,7 @@ def timer(func):
             seconds = elapsed_time % 60
             time_str = f"{minutes} min {seconds:.2f} sec"
 
-        print(f"⏱️  {func.__name__}() took {time_str}")
+        print(f"%% {func.__name__}() took {time_str}")
 
         return result
 
@@ -977,6 +979,7 @@ def plot_disruption_by_team_size(
     n_bins=20,
     save_path=None,
 ):
+    setup_plotting_style()
     required_cols = [team_size_column, "first_time_author_ratio", target_column]
     df = df[required_cols].copy()
     df["team_size_category"] = df[team_size_column].apply(_categorize_team_size)
@@ -1720,6 +1723,7 @@ def plot_atyp_combination(
     save_path="Figures/Sup_4_atyp_combination.pdf",
 ):
     gc.collect()
+    setup_plotting_style()
 
     # Work with only necessary columns
     df_slim = df[[group_column, "Atyp_Median_Z"]].copy()
@@ -1978,42 +1982,8 @@ def plot_expanded_disruption_heatmaps(
     """
     Create a figure with three subplots showing disruption values for different combinations of author ratios.
     Single row: First-time authors vs career stages, and career stages compared against each other
-
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        The dataframe containing the data
-    target_column : str, default="disruption_percentile"
-        The column containing the target values to aggregate
-    main_columns : list, default=["first_time_author_ratio", "early_career_author_ratio", "senior_author_ratio"]
-        The columns to use for the different axes. Order matters:
-        - main_columns[0] is typically first_time_author_ratio (x-axis for first two plots)
-        - main_columns[1:3] are the different career stages
-    x_bins : int, default=11
-        Number of bins for the x-axis
-    y_bins : int, default=11
-        Number of bins for the y-axis
-    method : str, default="mean" or "median"
-        Aggregation method, either "mean" or "median"
-    min_group_size : int, default=10
-        Minimum number of observations required in each bin
-    cmap : str, default="Reds"
-        Colormap to use for the heatmap
-    annotate : bool, default=True
-        Whether to annotate the heatmap cells with values and counts
-    save_path : str or None, default=None
-        If provided, the figure will be saved to this path
-
-    Returns:
-    --------
-    fig : matplotlib.figure.Figure
-        The figure object containing all three subplots
-    axes : list of matplotlib.axes.Axes
-        The list of axes objects for each subplot
-    pivot_dfs : list of pandas.DataFrame
-        The list of pivoted dataframes used for each heatmap
     """
-    from matplotlib.colors import Normalize
+    setup_plotting_style_mahdee()
 
     if method not in ["mean", "median"]:
         raise ValueError("Method must be either 'mean' or 'median'")
@@ -2210,6 +2180,10 @@ def plot_expanded_disruption_heatmaps(
         ax.tick_params(which="minor", bottom=False, left=False)
         sns.despine(ax=ax, top=True, right=True)
 
+        # Clean up subplot-specific variables
+        del masked_data, x_centers, y_centers, x_labels, y_labels
+        gc.collect()
+
     # Add a common colorbar
     cbar_ax = fig.add_axes([0.92, 0.25, 0.02, 0.5])  # [left, bottom, width, height]
     cbar = fig.colorbar(im, cax=cbar_ax)
@@ -2245,7 +2219,7 @@ def plot_expanded_disruption_heatmaps(
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
 
-    # Collect garbage
+    del all_values, vmin, vmax, norm, im, cbar
     gc.collect()
     return fig, axes, pivot_dfs
 
@@ -2727,6 +2701,10 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
         main_stat_name = "Mean_Disruption_Percentile"
         main_stat_column = "mean"
 
+    # Delete grouped object immediately
+    del grouped
+    gc.collect()
+
     # Create the result dataframe
     result_columns = {
         "first_time_author_count": stats["first_time_author_count"],
@@ -2741,6 +2719,10 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
         result_columns["Mean_Disruption_Percentile"] = stats["mean"]
 
     combination_df = pd.DataFrame(result_columns)
+
+    # Delete stats after extracting what we need
+    del stats
+    gc.collect()
 
     # Add team_size column
     combination_df["team_size"] = (
@@ -2764,11 +2746,15 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
         "N_Records",
     ]
 
-    gc.collect()
-
-    return combination_df[output_columns].sort_values(
+    result = combination_df[output_columns].sort_values(
         by=[main_stat_name, "first_time_author_count"], ascending=[False, True]
     )
+
+    # Clean up temporary objects
+    del combination_df, result_columns, output_columns
+    gc.collect()
+
+    return result
 
 
 def create_team_disruption_svg_direct(
@@ -2791,9 +2777,6 @@ def create_team_disruption_svg_direct(
     method : str, default="median"
         Method used for analysis, either "median" or "mean"
     """
-    import seaborn as sns
-    import matplotlib.colors as mcolors
-
     # Determine correct disruption column based on method
     disruption_col = (
         f"{'Median' if method == 'median' else 'Mean'}_Disruption_Percentile"
@@ -2953,6 +2936,7 @@ def create_team_disruption_svg_direct(
 
 
 # --- Core: compute correlations and stream results to disk (CUMULATIVE ONLY) ---
+@timer
 def compute_correlations_to_disk(
     final_df,
     out_dir="intermediate_data",
@@ -3013,7 +2997,7 @@ def compute_correlations_to_disk(
         # --- Cumulative selection ---
         low = 100 - N
         mask = df["disruption_percentile"] >= low
-        top_df = df[mask]
+        top_df = df[mask].copy()
 
         # Progress
         range_str = f"[{low:.3f}, 100.000]"
@@ -3039,7 +3023,7 @@ def compute_correlations_to_disk(
                 "band_width": band_width,
             }
             meta_path.write_text(json.dumps(meta, indent=2))
-            del top_df
+            del top_df, mask
             gc.collect()
             continue
 
@@ -3095,10 +3079,14 @@ def compute_correlations_to_disk(
         meta_path.write_text(json.dumps(meta, indent=2))
 
         # Clean up
-        del top_df, correlations, rows
+        del top_df, mask, correlations, group_sizes, rows
         gc.collect()
 
     print("\nAll thresholds processed. Intermediate files are in:", out_dir)
+
+    # Final cleanup
+    del df
+    gc.collect()
 
 
 # --- Helper: load all tiny CSVs into one DataFrame ---
@@ -3114,6 +3102,7 @@ def _load_results_df(out_dir="intermediate_data"):
 
 
 # --- Plot + save PDF (labels reflect cumulative mode & band_width step) ---
+@timer
 def load_results_and_plot_raiyan(
     out_dir="intermediate_data", fig_dir="Figures", band_width=5, fig_name=None
 ):
@@ -3148,7 +3137,6 @@ def load_results_and_plot_raiyan(
 
     plt.xlabel(f"Top N% Most Disruptive Papers (Cumulative; step = {band_width}%)")
     plt.ylabel("Correlation Coefficient\n between disruption and citation ranks")
-    #     plt.title("Disruption–Citation Correlation by First-time Author Ratio Groups\nAcross Cumulative Percentile Thresholds")
     plt.axhline(y=0, color="gray", linestyle="--", alpha=0.5, linewidth=1)
     plt.legend(
         title="Beginner Author Ratio Quartiles",
@@ -3178,7 +3166,9 @@ def load_results_and_plot_raiyan(
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     print(f"\nFigure saved to {out_path} (dpi=300)")
 
-    plt.show()
+    # Get figure before closing
+    fig = plt.gcf()
+    plt.close(fig)
 
     # Console summary
     print("\nSummary Statistics:")
@@ -3195,6 +3185,10 @@ def load_results_and_plot_raiyan(
     )
     print("\nCorrelation Summary by Group:")
     print(correlation_summary)
+
+    # Clean up
+    del fig, ax, results_df, palette, correlation_summary, xvals
+    gc.collect()
 
 
 # Load the tiny per-threshold CSVs
@@ -3360,7 +3354,15 @@ def run_quartile_line_tests_cumulative(
                 }
             )
 
-    per_threshold = pd.DataFrame(rows)
+        # Clean up per-threshold variables
+        del sub, info, pairs, pvals, holm, fdr
+        gc.collect()
+
+    per_threshold = pd.DataFrame.from_records(rows)
+
+    # Clean up rows list
+    del rows
+    gc.collect()
 
     # Pretty rounding and p-floor for printing
     printable = per_threshold.copy()
@@ -3400,6 +3402,10 @@ def run_quartile_line_tests_cumulative(
                 n_vals += qsub["n_b"].dropna().tolist()
             ns[q] = int(max(n_vals)) if n_vals else 0
 
+        # Clean up qsub
+        del qsub, n_vals
+        gc.collect()
+
         print(
             f"— Cumulative threshold N={N}% (disruption ≥ {100-N:.0f}th percentile) —"
         )
@@ -3438,6 +3444,10 @@ def run_quartile_line_tests_cumulative(
             )
         print("")
 
+        # Clean up sub after use
+        del sub, ns
+        gc.collect()
+
     # ---- Across-threshold summary (how often pairs are significant after Holm) ----
     print("Across-threshold summary (Holm-adjusted p<0.05):")
     pair_keys = sorted({(a, b) for a in q_order for b in q_order if a < b})
@@ -3452,6 +3462,8 @@ def run_quartile_line_tests_cumulative(
         print(
             f"  {a} vs {b}: {k}/{total} thresholds significant; median Δr={med_dr:.3f}"
         )
+        del sub
+        gc.collect()
 
     # ---- Save tables ----
     csv_path = Path(results_dir) / f"{table_name}.csv"
@@ -3487,7 +3499,11 @@ def run_quartile_line_tests_cumulative(
 
     print(f"\nSaved CSV: {csv_path}")
     print(f"Saved LaTeX: {tex_path}")
+
+    # Clean up all temporary objects
+    del printable, tex_df, latex, pair_keys, res, q_order, thresholds
     gc.collect()
+
     return per_threshold
 
 
@@ -3529,6 +3545,7 @@ def plot_citation_share_by_disruption_quartiles(
     result_df : pd.DataFrame with columns
       [threshold, band_low, band_high, quartile, citations_in_band, denom, share]
     """
+    setup_plotting_style()
     if 100 % band_width != 0:
         raise ValueError("band_width must divide 100 (e.g., 1,2,4,5,10,20,25,50).")
 
@@ -3723,7 +3740,6 @@ def plot_citation_share_by_disruption_quartiles(
     out_path = Path(fig_dir) / fig_name
     plt.savefig(out_path, bbox_inches="tight", dpi=dpi)
     print(f"\nFigure saved to {out_path} (dpi={dpi})")
-    plt.show()
 
     return result_df
 
@@ -3741,25 +3757,28 @@ def main():
         "Section: Teams with higher beginner-author ratios are more disruptive and innovative"
     )
     print("Correlation between first_time_author_ratio and disruption:")
-    print(
-        find_correlation_coefficient(
-            final_df, "first_time_author_ratio", "disruption_percentile"
-        )
+    corr_result = find_correlation_coefficient(
+        final_df, "first_time_author_ratio", "disruption_percentile"
     )
+    print(corr_result)
+    del corr_result
+    gc.collect()
 
     print("Correlation between early_career_author_ratio and disruption:")
-    print(
-        find_correlation_coefficient(
-            final_df, "early_career_author_ratio", "disruption_percentile"
-        )
+    corr_result = find_correlation_coefficient(
+        final_df, "early_career_author_ratio", "disruption_percentile"
     )
+    print(corr_result)
+    del corr_result
+    gc.collect()
 
     print("Correlation between senior_author_ratio and disruption:")
-    print(
-        find_correlation_coefficient(
-            final_df, "senior_author_ratio", "disruption_percentile"
-        )
+    corr_result = find_correlation_coefficient(
+        final_df, "senior_author_ratio", "disruption_percentile"
     )
+    print(corr_result)
+    del corr_result
+    gc.collect()
 
     # All Career-Age Ratios vs Disruption Percentile in Grid:
     fig, axes = plot_team_size_by_career_ratios_grid(
@@ -3767,7 +3786,7 @@ def main():
         target_column="disruption_percentile",
         save_path="Final_Figures/Final_All_Career-Age_Ratio_And_Disruption.pdf",
     )
-
+    plt.close(fig)
     del fig, axes
     gc.collect()
 
@@ -3786,14 +3805,15 @@ def main():
         n_boot=2000,
         random_state=123,
     )
+    del res_df, latex
     gc.collect()
 
     ### Beginner Author Ratio vs Disruption Across Team Sizes ####
-    print(
-        find_correlation_coefficient(
-            final_df, "first_time_author_ratio", "disruption_percentile", "team_size"
-        )
+    corr_result = find_correlation_coefficient(
+        final_df, "first_time_author_ratio", "disruption_percentile", "team_size"
     )
+    print(corr_result)
+    del corr_result
     gc.collect()
 
     fig, ax, stats_df = plot_disruption_by_team_size(
@@ -3803,14 +3823,16 @@ def main():
         min_group_size=100,
         save_path="Final_Figures/Final_First_Time_Author_and_Disruption_by_team_size.pdf",
     )
+    plt.close(fig)
+    del fig, ax, stats_df
     gc.collect()
 
     ### Beginner Author Ratio vs Disruption Across Decades ####
-    print(
-        find_correlation_coefficient(
-            final_df, "first_time_author_ratio", "disruption_percentile", "decade"
-        )
+    corr_result = find_correlation_coefficient(
+        final_df, "first_time_author_ratio", "disruption_percentile", "decade"
     )
+    print(corr_result)
+    del corr_result
     gc.collect()
 
     fig, axes = plot_firsttime_authors_by_decade_grid(
@@ -3820,6 +3842,7 @@ def main():
         decade_column="decade",
         save_path="Final_Figures/Final_Disruption_by_First_Time_Author_Ratio_decades.pdf",
     )
+    plt.close(fig)
     del fig, axes
     gc.collect()
 
@@ -3842,6 +3865,8 @@ def main():
         .reset_index(drop=True)
     )
     result.to_csv("out_df_filtered.csv", index=False)
+    del result
+    gc.collect()
 
     fields_to_plot = [
         "Geology",
@@ -3875,6 +3900,8 @@ def main():
     # 4) combine back
     filtered_df = pd.concat([first_row, rest], ignore_index=True)
     print(filtered_df)
+    del out_df, first_row, rest, filtered_df, num_cols
+    gc.collect()
 
     # Baten Sir Addition Ends
 
@@ -3885,7 +3912,8 @@ def main():
         fields_to_plot=fields_to_plot,
         save_path="Final_Figures/Final_Disruption_by_First_Time_Author_Ratio_fields_1-8.pdf",
     )
-    del fig, axes
+    plt.close(fig)
+    del fig, axes, fields_to_plot
     gc.collect()
 
     ########### Atypical Combination ##################
@@ -3904,6 +3932,7 @@ def main():
         group_column="first_time_author_ratio_group",
         save_path="Final_Figures/Final_atyp_combination_4bins.pdf",
     )
+    plt.close(fig)
     del fig, ax
     gc.collect()
 
@@ -3918,13 +3947,14 @@ def main():
     del fig, axes
     gc.collect()
 
-    _ = run_ks_tests_pairwise(
+    ks_result = run_ks_tests_pairwise(
         final_df,
         group_col="first_time_author_ratio_group",
         value_col="Atyp_Median_Z",
         results_dir="Final_Figures",
         table_name="Final_KS_Atyp_Median_Z_k4",
     )
+    del ks_result
     gc.collect()
 
     res_df, latex = kendall_tau_to_pnas_si_table_with_ci(
@@ -3977,6 +4007,7 @@ def main():
         min_group_size=100,
         save_path="Final_Figures/Final_Disruption_heatmaps_by_author_ratios.pdf",
     )
+    plt.close(fig)
     del fig, axes
     gc.collect()
 
@@ -4005,7 +4036,7 @@ def main():
         value_fmt="{:.2f}",
         compress_counts=True,
         na_text="--",
-        use_makecell=True,  # two-line cells (value on top, n below)
+        use_makecell=True,
         table_env="table",
         font_size_cmd="\\scriptsize",
     )
@@ -4013,6 +4044,9 @@ def main():
     for i, tex in enumerate(matrix_tables, 1):
         with open(f"Final_Figures/Final_disruption_matrix_panels_{i}.tex", "w") as f:
             f.write(tex)
+
+    del pivot_dfs_disruption, plot_configs, matrix_tables
+    gc.collect()
 
     fig, axes, pivot_dfs = plot_expanded_disruption_heatmaps(
         final_df,
@@ -4026,6 +4060,9 @@ def main():
         min_group_size=100,
         save_path="Final_Figures/Final_Atyp_Median_Z_heatmaps_by_author_ratios.pdf",
     )
+    plt.close(fig)
+    del fig, axes, pivot_dfs
+    gc.collect()
 
     coauthor_groups_to_plot = [
         "60-70 percentile",
@@ -4042,9 +4079,8 @@ def main():
         ylim=(30, 95),
         save_path="Final_Figures/Final_Disruption_by_First_Time_Author_Ratio_accross_coauthor_Disruption.pdf",
     )
-    plt.show()
     plt.close(fig)
-    del fig, axes
+    del fig, axes, coauthor_groups_to_plot
     gc.collect()
 
     top_combination_based_on_median = analyze_author_count_combinations(
@@ -4071,17 +4107,27 @@ def main():
     )
 
     top_50_mean = top_combination_based_on_mean.head(50)
-    top_50_mean.other_author_count = (
-        top_50_mean.early_career_author_count + top_50_mean.senior_author_count
+    top_50_mean["other_author_count"] = (
+        top_50_mean["early_career_author_count"] + top_50_mean["senior_author_count"]
     )
 
     count = (
-        top_50_mean.first_time_author_count >= top_50_mean.other_author_count
+        top_50_mean["first_time_author_count"] >= top_50_mean["other_author_count"]
     ).sum()
     print("Count where beginner_author_count >= other_author_count:", count)
 
-    count = (top_50_mean.first_time_author_count > top_50_mean.other_author_count).sum()
+    count = (
+        top_50_mean["first_time_author_count"] > top_50_mean["other_author_count"]
+    ).sum()
     print("Count where beginner_author_count > other_author_count:", count)
+
+    del (
+        top_combination_based_on_median,
+        top_combination_based_on_mean,
+        top_50_mean,
+        count,
+    )
+    gc.collect()
 
     ######## Highly disruptive papers by beginner-heavy teams are highly cited
     fig, axes = plot_team_size_by_career_ratios_grid(
@@ -4090,7 +4136,6 @@ def main():
         ylim=(0, 100),
         save_path="Final_Figures/Final_All_Career-Age_Ratio_And_C10.pdf",
     )
-    plt.show()
     plt.close(fig)
     del fig, axes
     gc.collect()
@@ -4101,9 +4146,10 @@ def main():
         min_rows_for_percentile=10,
         min_rows_per_group=5,
         overwrite=True,
-        band_width=10,  # step size for cumulative thresholds
-        corr_method="spearman",  # or "pearson"/"kendall"
+        band_width=10,
+        corr_method="spearman",
     )
+    gc.collect()
 
     load_results_and_plot_raiyan(
         out_dir="intermediate_data", fig_dir="Final_Figures", band_width=10
@@ -4115,21 +4161,29 @@ def main():
         results_dir="Final_Figures",
         table_name="Final_quartile_line_tests_step10",
         expected_quartiles=("0.00 - 0.25", "0.25 - 0.50", "0.50 - 0.75", "0.75 - 1.00"),
-        step_filter=10,  # match your cumulative step
+        step_filter=10,
         p_floor=1e-300,
     )
+    del tests_df
     gc.collect()
 
     res_quartiles = plot_citation_share_by_disruption_quartiles(
         final_df,
         disruption_col="disruption_percentile",
         citation_col="citation_count",
-        band_width=10,  # 20 bands on x-axis
-        quartile_column=None,  # your 4-bin labels
-        normalize="global",  # or "global"
+        band_width=10,
+        quartile_column=None,
+        normalize="global",
         fig_dir="Final_Figures",
     )
+    del res_quartiles
     gc.collect()
+
+    # Final cleanup
+    del final_df
+    gc.collect()
+
+    print("\n=== Analysis Complete ===")
 
 
 if __name__ == "__main__":
