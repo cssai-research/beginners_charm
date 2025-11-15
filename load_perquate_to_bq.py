@@ -1,6 +1,6 @@
 from google.cloud import bigquery
 
-GCP_PROJECT_NAME = "scisci-cssai-usf"  # replace this with your GCP project name
+GCP_PROJECT_NAME = "scisciresearch-mahdee"  # replace this with your GCP project name
 DATASET_NAME = "SciSciNet"
 BUCKET_PATH = "gs://sciscinet-neo/v2"
 
