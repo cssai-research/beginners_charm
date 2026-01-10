@@ -1,6 +1,6 @@
 from google.cloud import bigquery
 
-GCP_PROJECT_NAME = "scisciresearch-mahdee"  # replace this with your GCP project name
+GCP_PROJECT_ID = "sciscinet-mahdee-483915"  # replace this with your GCP project ID
 DATASET_NAME = "SciSciNet"
 BUCKET_PATH = "gs://sciscinet-neo/v2"
 
@@ -14,7 +14,7 @@ tables = {
 }
 
 print(f"BigQuery version: {bigquery.__version__}")
-client = bigquery.Client(project=GCP_PROJECT_NAME)
+client = bigquery.Client(project=GCP_PROJECT_ID)
 
 for parquet_file, bq_table_name in tables.items():
     uri = f"{BUCKET_PATH}/{parquet_file}"
@@ -30,7 +30,7 @@ for parquet_file, bq_table_name in tables.items():
     try:
         load_job = client.load_table_from_uri(
             uri,
-            f"{GCP_PROJECT_NAME}.{DATASET_NAME}.{bq_table_name}",
+            f"{GCP_PROJECT_ID}.{DATASET_NAME}.{bq_table_name}",
             job_config=job_config,
         )
         load_job.result()
@@ -45,7 +45,7 @@ print("\nRenaming column P_gf_ to P_gf in SciSciNet_Authors table...")
 try:
     # Create a new table with the renamed column
     rename_query = f"""
-    CREATE OR REPLACE TABLE `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_Authors` AS
+    CREATE OR REPLACE TABLE `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_Authors` AS
     SELECT 
         authorid,
         avg_c10,
@@ -56,7 +56,7 @@ try:
         inference_sources,
         inference_counts,
         P_gf_ AS P_gf
-    FROM `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_Authors`
+    FROM `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_Authors`
     """
 
     query_job = client.query(rename_query)
@@ -70,7 +70,7 @@ except Exception as e:
 # add debut year on author table
 try:
     alter_table_query = f"""
-    ALTER TABLE `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_Authors`
+    ALTER TABLE `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_Authors`
     ADD COLUMN debut_year INT64
     """
     query_job = client.query(alter_table_query)
@@ -78,11 +78,11 @@ try:
     print("Successfully added debut_year column to SciSciNet_Authors table")
 
     update_debut_year_query = f"""
-    UPDATE `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_Authors` AS authors
+    UPDATE `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_Authors` AS authors
     SET debut_year = (
         SELECT MIN(papers.year) 
-        FROM `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_PaperAuthorAffiliations` AS affiliations
-        JOIN `{GCP_PROJECT_NAME}.{DATASET_NAME}.SciSciNet_Papers` AS papers
+        FROM `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_PaperAuthorAffiliations` AS affiliations
+        JOIN `{GCP_PROJECT_ID}.{DATASET_NAME}.SciSciNet_Papers` AS papers
         ON affiliations.paperid = papers.paperid
         WHERE affiliations.authorid = authors.authorid
         AND papers.year IS NOT NULL

@@ -5,25 +5,15 @@ import os
 
 def export_bq_table_to_csv(
     bq_table_name,
-    project_id="scisciresearch-mahdee",
+    project_id="sciscinet-mahdee-483915",
     dataset_id="Disruption",
-    bucket_name="scisciresearch-mahdee",
+    bucket_name="sciscinet-data-mahdee",
     output_folder="exported_data",
     cleanup_intermediate=False,
 ):
     """
     Export a BigQuery table to a CSV file in GCS (memory-efficient version).
-
-    Args:
-        bq_table_name (str): Name of the BigQuery table to export
-        project_id (str): GCP project ID
-        dataset_id (str): BigQuery dataset ID
-        bucket_name (str): GCS bucket name for storage
-        output_folder (str): Folder in GCS bucket to store the final CSV
-        cleanup_intermediate (bool): Whether to delete intermediate CSV files after combining
-
-    Returns:
-        str: GCS URI of the combined CSV file
+    Converts ARRAY columns to pipe-delimited strings for CSV compatibility.
     """
 
     # Initialize clients
@@ -40,9 +30,73 @@ def export_bq_table_to_csv(
 
     print(f"Starting export of table: {full_table_id}")
 
-    # Extract table to GCS intermediate location
+    # Create a temporary table with arrays converted to strings
+    temp_table_id = f"{project_id}.{dataset_id}.temp_{bq_table_name}_export"
+    
+    # Query to convert arrays to pipe-delimited strings
+    convert_query = f"""
+    CREATE OR REPLACE TABLE `{temp_table_id}` AS
+    SELECT
+        paperid,
+        doi,
+        year,
+        doctype,
+        citation_count,
+        C10,
+        disruption,
+        Atyp_Median_Z,
+        Atyp_10pct_Z,
+        Atyp_Pairs,
+        team_size,
+        institution_count,
+        funding_count,
+        avg_career_age,
+        std_career_age,
+        max_career_age,
+        first_time_author_count,
+        early_career_author_count,
+        mid_career_author_count,
+        senior_author_count,
+        first_time_author_ratio,
+        early_career_author_ratio,
+        mid_career_author_ratio,
+        senior_author_ratio,
+        affiliation_author_ratio,
+        avg_paper_count,
+        avg_citation_count,
+        avg_c5,
+        avg_disruption,
+        early_author_avg_paper_count,
+        early_author_avg_citation_count,
+        early_author_avg_c5,
+        early_author_avg_disruption,
+        mid_author_avg_paper_count,
+        mid_author_avg_citation_count,
+        mid_author_avg_c5,
+        mid_author_avg_disruption,
+        senior_author_avg_paper_count,
+        senior_author_avg_citation_count,
+        senior_author_avg_c5,
+        senior_author_avg_disruption,
+        avg_reference_age,
+        median_reference_age,
+        std_reference_age,
+        avg_reference_popularity,
+        median_reference_popularity,
+        std_reference_popularity,
+        ARRAY_TO_STRING(level_0_field_names, '|') AS level_0_field_names,
+        ARRAY_TO_STRING(level_1_field_names, '|') AS level_1_field_names
+    FROM `{full_table_id}`
+    """
+    
+    print("Converting array columns to delimited strings...")
+    convert_job = bq_client.query(convert_query)
+    convert_job.result()
+    print("Conversion completed.")
+
+    # Extract the temporary table to GCS
     extract_job = bq_client.extract_table(
-        full_table_id,
+        temp_table_id,
         intermediate_uri,
         location="US",
     )
@@ -85,7 +139,12 @@ def export_bq_table_to_csv(
         output_blob = bucket.blob(output_path)
         output_blob.upload_from_filename(tmp_file.name, content_type="text/csv")
 
-    print(f"✅ Successfully created combined CSV at: {output_uri}")
+    print(f"Successfully created combined CSV at: {output_uri}")
+
+    # Clean up temporary table
+    print("Cleaning up temporary table...")
+    bq_client.delete_table(temp_table_id)
+    print(f"Deleted temporary table: {temp_table_id}")
 
     # Clean up intermediate files if requested
     if cleanup_intermediate:
@@ -103,5 +162,5 @@ def export_bq_table_to_csv(
     return output_uri
 
 
-gcs_uri = export_bq_table_to_csv("disruption_analysis")
+gcs_uri = export_bq_table_to_csv("disruption_analysis", cleanup_intermediate=True)
 print(f"Table exported to: {gcs_uri}")
