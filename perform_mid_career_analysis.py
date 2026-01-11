@@ -3,18 +3,12 @@ import time
 import pandas as pd
 import numpy as np
 import os
-import glob
-import json
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 import seaborn as sns
 from matplotlib.colors import Normalize
 from scipy.stats import pearsonr, spearmanr, kendalltau
-from pathlib import Path
-from itertools import combinations
-from scipy.stats import ks_2samp
-from math import atanh, isfinite, erfc, sqrt
 from textwrap import dedent
 from typing import Union, Optional
 import matplotlib.colors as mcolors
@@ -90,6 +84,7 @@ def load_full_disruption_data(
         "level_1_field_names",
         "first_time_author_count",
         "early_career_author_count",
+        "mid_career_author_count",
         "senior_author_count",
     ]
 
@@ -138,19 +133,6 @@ def load_full_disruption_data(
         )
     ]
 
-    # In the preperation script early_career = 1-5 and mid_career = 6-10
-    # In analysis we will use early_career = 1-10
-    df["early_career_author_ratio"] = (
-        df["early_career_author_ratio"] + df["mid_career_author_ratio"]
-    )
-
-    df["early_author_avg_disruption"] = np.where(
-        df["early_author_avg_disruption"].isna()
-        | df["mid_author_avg_disruption"].isna(),
-        np.nan,
-        (df["early_author_avg_disruption"] + df["mid_author_avg_disruption"]) / 2,
-    )
-
     print(f"Starting year filtering... Keeping articles from {START_YEAR}")
     df = df[df["year"] >= START_YEAR]
 
@@ -158,8 +140,6 @@ def load_full_disruption_data(
         columns=[
             "decade_start",
             "decade_end",
-            "mid_career_author_ratio",
-            "mid_author_avg_disruption",
         ],
         inplace=True,
     )
@@ -217,16 +197,26 @@ def load_full_disruption_data(
     df["senior_author_disruption_percentile"] = df[
         "senior_author_avg_disruption"
     ].apply(lambda x: find_percentile_in_reference(x, avg_disruption_sorted))
+
     df["early_career_disruption_percentile"] = df["early_author_avg_disruption"].apply(
+        lambda x: find_percentile_in_reference(x, avg_disruption_sorted)
+    )
+
+    df["mid_career_disruption_percentile"] = df["mid_author_avg_disruption"].apply(
         lambda x: find_percentile_in_reference(x, avg_disruption_sorted)
     )
 
     df["senior_author_disruption_bucket"] = df[
         "senior_author_disruption_percentile"
     ].apply(percentile_group)
+
     df["early_career_disruption_bucket"] = df[
         "early_career_disruption_percentile"
     ].apply(percentile_group)
+
+    df["mid_career_disruption_bucket"] = df["mid_career_disruption_percentile"].apply(
+        percentile_group
+    )
 
     gc.collect()
 
@@ -442,32 +432,35 @@ def plot_team_size_by_career_ratios_grid(
         career_columns = [
             "first_time_author_ratio",
             "early_career_author_ratio",
+            "mid_career_author_ratio",
             "senior_author_ratio",
         ]
 
-    # Create a 2x4 grid of subplots instead of 4x4
+    # Create a 2x4 grid of subplots
     fig, axes = plt.subplots(2, 4, figsize=(24, 12), sharex=True, sharey=True, dpi=300)
     axes_flat = axes.flatten()
 
-    # Define color palette and markers
+    # Define color palette and markers for 4 groups
     full_palette = sns.color_palette("viridis_r", 8)
-    color_indices = [0, 1, 5]
+    color_indices = [0, 1, 3, 5]
     selected_colors = [full_palette[i] for i in color_indices]
     colors = {col: selected_colors[i] for i, col in enumerate(career_columns)}
 
     markers = {
         "first_time_author_ratio": "o",
         "early_career_author_ratio": "s",
+        "mid_career_author_ratio": "^",
         "senior_author_ratio": "d",
     }
 
     labels = {
         "first_time_author_ratio": "Beginner Authors",
         "early_career_author_ratio": "Early-Career Authors",
+        "mid_career_author_ratio": "Mid-Career Authors",
         "senior_author_ratio": "Senior Authors",
     }
 
-    # Create plots for each team size - modified for 2x4 grid (8 total plots)
+    # Create plots for each team size - 2x4 grid (8 total plots)
     if team_sizes is None:
         team_sizes = list(range(1, 8)) + ["8+"]  # 1-7 individual, then "8+"
 
@@ -593,8 +586,8 @@ def plot_team_size_by_career_ratios_grid(
                 data=filtered_stats,
                 color=colors[group_column],
                 marker=markers[group_column],
-                markersize=10,  # Increased from 6 to 10
-                linewidth=2.5,  # Increased from 1.5 to 2.5
+                markersize=10,
+                linewidth=2.5,
                 label=(
                     labels[group_column] if idx == 0 else None
                 ),  # Only add labels on first plot
@@ -646,8 +639,6 @@ def plot_team_size_by_career_ratios_grid(
     for ax in axes_flat:
         if ax.get_legend() is not None:
             ax.get_legend().remove()
-
-    # No need to hide subplots since we're using exactly 8 (2x4)
 
     # Add common axis labels
     fig.text(0.5, 0.01, "Author Ratio", ha="center", fontsize=18, fontweight="bold")
@@ -746,7 +737,7 @@ def kendall_tau_to_pnas_si_table_with_ci(
     correction="fdr_bh",  # "fdr_bh", "bonferroni", or None
     tau_fmt="{:.3f}",
     ci_fmt="{:.3f}",
-    caption="Kendall’s $\\tau$ between author ratio and disruption percentile by team size and career stage.",
+    caption="Kendall's $\\tau$ between author ratio and disruption percentile by team size and career stage.",
     label="tab:kendall_team_career",
     save_path="Figures/SI_Kendall_Tau_Table.tex",
     # CI controls:
@@ -756,7 +747,7 @@ def kendall_tau_to_pnas_si_table_with_ci(
     random_state=42,
 ):
     """
-    Computes Kendall’s τ per subplot (team size × career line) with the same binning
+    Computes Kendall's τ per subplot (team size × career line) with the same binning
     used in your plotting function, applies multiple-testing correction to p-values,
     and outputs a PNAS SI-style LaTeX table where each cell shows:
 
@@ -766,14 +757,16 @@ def kendall_tau_to_pnas_si_table_with_ci(
     """
     if career_columns is None:
         career_columns = [
-            "first_time_author_ratio",  # Beginner
-            "early_career_author_ratio",  # Early-career
-            "senior_author_ratio",  # Senior
+            "first_time_author_ratio",
+            "early_career_author_ratio",
+            "mid_career_author_ratio",
+            "senior_author_ratio",
         ]
 
     pretty_cols = {
         "first_time_author_ratio": "Beginner",
         "early_career_author_ratio": "Early-career",
+        "mid_career_author_ratio": "Mid-career",
         "senior_author_ratio": "Senior",
     }
     if team_sizes is None:
@@ -929,9 +922,9 @@ def kendall_tau_to_pnas_si_table_with_ci(
 
     res["cell"] = res.apply(cell_text, axis=1)
 
-    # Pivot to wide: rows are team sizes; columns are the three careers
+    # Pivot to wide: rows are team sizes; columns are the four careers
     order_rows = [str(i) for i in range(1, 8)] + ["8+"]
-    order_cols = ["Beginner", "Early-career", "Senior"]
+    order_cols = ["Beginner", "Early-career", "Mid-career", "Senior"]
     wide = res.pivot(index="team_size", columns="career", values="cell").reindex(
         index=order_rows, columns=order_cols
     )
@@ -941,23 +934,22 @@ def kendall_tau_to_pnas_si_table_with_ci(
     lines = []
     lines.append("\\begin{table}\\centering")
     lines.append(f"\\caption{{{caption}}}")
-    lines.append("\\begin{tabular}{lrrr}")
-    lines.append("Team size & Beginner & Early-career & Senior \\\\")
+    lines.append("\\begin{tabular}{lrrrr}")
+    lines.append("Team size & Beginner & Early-career & Mid-career & Senior \\\\")
     lines.append("\\midrule")
     for ts in order_rows:
         if ts not in wide.index:
-            lines.append(f"{ts} & -- & -- & -- \\\\")
+            lines.append(f"{ts} & -- & -- & -- & -- \\\\")
         else:
             row = wide.loc[ts]
             lines.append(
-                f"{ts} & {row['Beginner']} & {row['Early-career']} & {row['Senior']} \\\\"
+                f"{ts} & {row['Beginner']} & {row['Early-career']} & {row['Mid-career']} & {row['Senior']} \\\\"
             )
     lines.append("\\bottomrule")
     lines.append("\\end{tabular}")
     lines.append("\\vspace{0.25em}")
-    # concise SI footnote
     lines.append(
-        "\\footnotesize{Entries are Kendall’s $\\tau$ with bootstrap "
+        "\\footnotesize{Entries are Kendall's $\\tau$ with bootstrap "
         f"{ci_level}\\% percentile CIs in brackets; significance stars reflect "
         "adjusted $p$-values: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$. "
         + corr_note
@@ -975,15 +967,13 @@ def kendall_tau_to_pnas_si_table_with_ci(
     return res, latex_str
 
 
-
-
-
 def plot_expanded_disruption_heatmaps(
     df,
     target_column="disruption_percentile",
     main_columns=[
         "first_time_author_ratio",
         "early_career_author_ratio",
+        "mid_career_author_ratio",
         "senior_author_ratio",
     ],
     x_bins=11,
@@ -995,8 +985,8 @@ def plot_expanded_disruption_heatmaps(
     save_path=None,
 ):
     """
-    Create a figure with three subplots showing disruption values for different combinations of author ratios.
-    Single row: First-time authors vs career stages, and career stages compared against each other
+    Create a figure with six subplots showing disruption values for different combinations of author ratios.
+    Two rows: First-time authors vs career stages (row 1), and career stages compared against each other (row 2)
     """
     setup_plotting_style_mahdee()
 
@@ -1006,20 +996,23 @@ def plot_expanded_disruption_heatmaps(
     # Close any existing figures
     plt.close("all")
 
-    # Create figure and subplots (1 row, 3 columns)
-    fig, axes = plt.subplots(1, 3, figsize=(30, 10), dpi=300)
+    # Create figure and subplots (2 rows, 3 columns for 6 combinations)
+    fig, axes = plt.subplots(2, 3, figsize=(36, 24), dpi=300)
 
     # Extract columns for easier reference
     fresh_ratio = main_columns[0]
-    career_stages = main_columns[1:3]
+    career_stages = main_columns[1:4]  # early, mid, senior
 
-    # Define all axis pairs we want to plot (3 combinations)
+    # Define all axis pairs we want to plot (6 combinations total)
     plot_configs = [
-        # first_time_author_ratio (x-axis) vs each career stage (y-axis)
+        # Row 1: first_time_author_ratio (x-axis) vs each career stage (y-axis)
         {"x_column": fresh_ratio, "y_column": career_stages[0]},  # Fresh vs Early
-        {"x_column": fresh_ratio, "y_column": career_stages[1]},  # Fresh vs Senior
-        # Career stages compared to each other
-        {"x_column": career_stages[0], "y_column": career_stages[1]},  # Early vs Senior
+        {"x_column": fresh_ratio, "y_column": career_stages[1]},  # Fresh vs Mid
+        {"x_column": fresh_ratio, "y_column": career_stages[2]},  # Fresh vs Senior
+        # Row 2: Career stages compared to each other
+        {"x_column": career_stages[0], "y_column": career_stages[1]},  # Early vs Mid
+        {"x_column": career_stages[0], "y_column": career_stages[2]},  # Early vs Senior
+        {"x_column": career_stages[1], "y_column": career_stages[2]},  # Mid vs Senior
     ]
 
     # Lists to store results
@@ -1093,7 +1086,10 @@ def plot_expanded_disruption_heatmaps(
 
     # Process each subplot
     for i, (config, pivot_data) in enumerate(zip(plot_configs, pivot_dfs)):
-        ax = axes[i]
+        row = i // 3
+        col = i % 3
+        ax = axes[row, col]
+
         pivot_df = pivot_data["pivot"]
         counts_df = pivot_data["counts"]
 
@@ -1116,7 +1112,7 @@ def plot_expanded_disruption_heatmaps(
             aspect="auto",
             origin="lower",
             interpolation="nearest",
-            norm=norm,  # Apply the common normalization
+            norm=norm,
         )
 
         # Set tick positions and labels
@@ -1128,13 +1124,17 @@ def plot_expanded_disruption_heatmaps(
         # Rotate the tick labels and set their alignment
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
-        # Add labels - Change "Fresh Author Ratio" to "First-Time Author Ratio"
+        # Add labels
         x_label_display = (
             "Beginner Author Ratio"
             if x_column == "first_time_author_ratio"
-            else x_column.replace("_", " ")
+            else x_column.replace("_", " ").title()
         )
-        y_label_display = y_column.replace("_", " ")
+        y_label_display = (
+            "Beginner Author Ratio"
+            if y_column == "first_time_author_ratio"
+            else y_column.replace("_", " ").title()
+        )
 
         ax.set_xlabel(x_label_display, fontweight="bold", fontsize=14)
         ax.set_ylabel(y_label_display, fontweight="bold", fontsize=14)
@@ -1166,7 +1166,7 @@ def plot_expanded_disruption_heatmaps(
                         # Display value with better formatting
                         ax.text(
                             k,
-                            j + 0.15,  # Position value slightly above center
+                            j + 0.15,
                             value_text,
                             ha="center",
                             va="center",
@@ -1179,13 +1179,13 @@ def plot_expanded_disruption_heatmaps(
                         if count_text:
                             ax.text(
                                 k,
-                                j - 0.15,  # Position count slightly below center
+                                j - 0.15,
                                 f"n={count_text}",
                                 ha="center",
                                 va="center",
                                 color="black",
                                 fontsize=6,
-                                alpha=0.8,  # Make it slightly transparent
+                                alpha=0.8,
                             )
 
         # Add grid lines
@@ -1200,7 +1200,7 @@ def plot_expanded_disruption_heatmaps(
         gc.collect()
 
     # Add a common colorbar
-    cbar_ax = fig.add_axes([0.92, 0.25, 0.02, 0.5])  # [left, bottom, width, height]
+    cbar_ax = fig.add_axes([0.92, 0.25, 0.015, 0.5])
     cbar = fig.colorbar(im, cax=cbar_ax)
     cbar.set_label(
         f"{method.capitalize()} {target_column.replace('_', ' ')}",
@@ -1227,8 +1227,10 @@ def plot_expanded_disruption_heatmaps(
         style="italic",
     )
 
-    # Adjust spacing instead of using tight_layout to avoid the warning
-    fig.subplots_adjust(left=0.05, right=0.90, bottom=0.15, top=0.85, wspace=0.3)
+    # Adjust spacing
+    fig.subplots_adjust(
+        left=0.05, right=0.90, bottom=0.08, top=0.92, wspace=0.3, hspace=0.3
+    )
 
     # Save figure if path is provided
     if save_path:
@@ -1274,8 +1276,8 @@ def pnas_si_matrix_tables_from_heatmaps(
     value_fmt="{:.2f}",
     compress_counts=True,
     na_text="--",
-    use_makecell=True,  # if False, prints "value (n=…)" on one line
-    table_env="table",  # "table" or "table*"
+    use_makecell=True,
+    table_env="table",
     font_size_cmd="\\scriptsize",
 ):
     """
@@ -1370,13 +1372,12 @@ def pnas_si_matrix_tables_from_heatmaps(
     return out
 
 
-
 def analyze_author_count_combinations(df, min_count=10, method="median"):
     """
     Analyze combinations of author counts and their relationship to disruption percentiles.
 
     This function:
-    1. Groups by all 3 author count columns (no binning)
+    1. Groups by all 4 author count columns (no binning)
     2. For each combination, calculates statistics on disruption percentile based on method
     3. Sorts results by the chosen disruption percentile statistic (descending)
 
@@ -1398,14 +1399,15 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
     if method not in ["median", "mean"]:
         raise ValueError("Method must be either 'median' or 'mean'")
 
-    # Define the author count columns
+    # Define the author count columns (now 4 groups)
     count_columns = [
         "first_time_author_count",
         "early_career_author_count",
+        "mid_career_author_count",
         "senior_author_count",
     ]
 
-    # Step 1: Group by all 3 count columns
+    # Step 1: Group by all 4 count columns
     grouped = df.groupby(count_columns)
 
     # Step 2: Calculate statistics for each group
@@ -1430,6 +1432,7 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
     result_columns = {
         "first_time_author_count": stats["first_time_author_count"],
         "early_career_author_count": stats["early_career_author_count"],
+        "mid_career_author_count": stats["mid_career_author_count"],
         "senior_author_count": stats["senior_author_count"],
         main_stat_name: stats[main_stat_column],
         "N_Records": stats["count"],
@@ -1445,10 +1448,11 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
     del stats
     gc.collect()
 
-    # Add team_size column
+    # Add team_size column (now includes mid-career)
     combination_df["team_size"] = (
         combination_df["first_time_author_count"]
         + combination_df["early_career_author_count"]
+        + combination_df["mid_career_author_count"]
         + combination_df["senior_author_count"]
     )
 
@@ -1462,6 +1466,7 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
     output_columns = [
         "first_time_author_count",
         "early_career_author_count",
+        "mid_career_author_count",
         "senior_author_count",
         main_stat_name,
         "N_Records",
@@ -1480,7 +1485,7 @@ def analyze_author_count_combinations(df, min_count=10, method="median"):
 
 def create_team_disruption_svg_direct(
     df,
-    output_filename="Final_Figures/Final_team_disruption.svg",
+    output_filename="MidCareer_Figures/Final_team_disruption.svg",
     top_n=25,
     method="median",
 ):
@@ -1509,11 +1514,12 @@ def create_team_disruption_svg_direct(
         drop=True
     )
 
-    # Add team_size column if not present
+    # Add team_size column if not present (now includes mid-career)
     if "team_size" not in plot_data.columns:
         plot_data["team_size"] = (
             plot_data["first_time_author_count"]
             + plot_data["early_career_author_count"]
+            + plot_data["mid_career_author_count"]
             + plot_data["senior_author_count"]
         )
 
@@ -1524,10 +1530,11 @@ def create_team_disruption_svg_direct(
     graph_width = width - margin["left"] - margin["right"]
     graph_height = height - margin["top"] - margin["bottom"]
 
-    # Define career columns and map colors using viridis_r palette
+    # Define career columns and map colors using viridis_r palette (now 4 groups)
     career_columns = [
         "first_time_author_count",
         "early_career_author_count",
+        "mid_career_author_count",
         "senior_author_count",
     ]
 
@@ -1536,10 +1543,11 @@ def create_team_disruption_svg_direct(
     selected_colors = [mcolors.to_hex(full_palette[i]) for i in color_indices]
     colors = {col: selected_colors[i] for i, col in enumerate(career_columns)}
 
-    # Emoji mapping
+    # Emoji mapping (now 4 groups)
     emoji_map = {
         "first_time_author_count": "🌱",
         "early_career_author_count": "🚀",
+        "mid_career_author_count": "⭐",
         "senior_author_count": "🧠",
     }
 
@@ -1620,8 +1628,6 @@ def create_team_disruption_svg_direct(
                       width="{segment_width}" height="{bar_height - bar_padding*2}"
                       fill="{colors[col]}" />
                 """
-
-                # No emoji rendering here anymore - moved to y-ticks
                 start_x += segment_width
 
         svg_content += f"""
@@ -1630,12 +1636,12 @@ def create_team_disruption_svg_direct(
         </text>
         """
 
-    # Legend
+    # Legend (now 4 groups)
     legend_y = height / 2 - margin["bottom"]
     legend_x = width - margin["right"] + 10
 
     svg_content += f"""
-    <rect x="{legend_x - 10}" y="{legend_y - 10}" width="130" height="100" fill="white" stroke="#ddd" />
+    <rect x="{legend_x - 10}" y="{legend_y - 10}" width="130" height="120" fill="white" stroke="#ddd" />
     """
 
     for i, col in enumerate(career_columns):
@@ -1656,8 +1662,6 @@ def create_team_disruption_svg_direct(
     print(f"SVG visualization saved to {output_filename}")
 
 
-
-
 def main():
     if not os.path.exists("MidCareer_Figures"):
         os.makedirs("MidCareer_Figures")
@@ -1665,6 +1669,44 @@ def main():
     setup_plotting_style()
 
     final_df = load_full_disruption_data()
+
+    # Keep only necessary columns to reduce memory usage
+    necessary_columns = [
+        # Career ratios
+        "first_time_author_ratio",
+        "early_career_author_ratio",
+        "mid_career_author_ratio",
+        "senior_author_ratio",
+        # Career counts
+        "first_time_author_count",
+        "early_career_author_count",
+        "mid_career_author_count",
+        "senior_author_count",
+        # Team info
+        "team_size",
+        # Target variables
+        "disruption",
+        "disruption_percentile",
+        "C10",
+        "c10_percentile",
+        "Atyp_Median_Z",
+        # Disruption percentiles by career stage
+        "senior_author_disruption_percentile",
+        "early_career_disruption_percentile",
+        "mid_career_disruption_percentile",
+        # Additional analysis columns (if needed)
+        "avg_disruption",
+        "avg_disruption_percentile",
+        "avg_citation_count",
+        "avg_citation_count_percentile",
+    ]
+
+    # Filter to only necessary columns
+    final_df = final_df[necessary_columns]
+    gc.collect()
+
+    print(f"Memory optimized. Columns kept: {len(final_df.columns)}")
+    print(f"DataFrame shape: {final_df.shape}")
 
     ################### Teams with higher beginner-author ratios are more disruptive and innovative ###################
     print(
@@ -1681,6 +1723,14 @@ def main():
     print("Correlation between early_career_author_ratio and disruption:")
     corr_result = find_correlation_coefficient(
         final_df, "early_career_author_ratio", "disruption_percentile"
+    )
+    print(corr_result)
+    del corr_result
+    gc.collect()
+
+    print("Correlation between mid_career_author_ratio and disruption:")
+    corr_result = find_correlation_coefficient(
+        final_df, "mid_career_author_ratio", "disruption_percentile"
     )
     print(corr_result)
     del corr_result
@@ -1711,8 +1761,8 @@ def main():
         min_group_size=5,
         min_sample_threshold=50,
         n_bins=10,
-        binning_method="equal",  # or "quantile"
-        correction="fdr_bh",  # "fdr_bh", "bonferroni", or None
+        binning_method="equal",
+        correction="fdr_bh",
         save_path="MidCareer_Figures/MidCareer_Kendall_Tau_Table_withCI.tex",
         add_ci=True,
         ci_level=95,
@@ -1722,9 +1772,7 @@ def main():
     del res_df, latex
     gc.collect()
 
-
-
-    ######### Early-Career and disruptive collaborators are linked to greter disruption in beginner-heavy teams ######
+    ######### Early-Career and disruptive collaborators are linked to greater disruption in beginner-heavy teams ######
     print(
         "Section: Early-Career and disruptive collaborators are linked to greater disruption in beginner-heavy teams"
     )
@@ -1734,11 +1782,12 @@ def main():
         main_columns=[
             "first_time_author_ratio",
             "early_career_author_ratio",
+            "mid_career_author_ratio",
             "senior_author_ratio",
         ],
         cmap="Purples",
         min_group_size=100,
-        save_path="Final_Figures/Final_Disruption_heatmaps_by_author_ratios.pdf",
+        save_path="MidCareer_Figures/Final_Disruption_heatmaps_by_author_ratios.pdf",
     )
     plt.close(fig)
     del fig, axes
@@ -1748,15 +1797,27 @@ def main():
         {
             "x_column": "first_time_author_ratio",
             "y_column": "early_career_author_ratio",
-        },  # Panel A
+        },
+        {
+            "x_column": "first_time_author_ratio",
+            "y_column": "mid_career_author_ratio",
+        },
         {
             "x_column": "first_time_author_ratio",
             "y_column": "senior_author_ratio",
-        },  # Panel B
+        },
+        {
+            "x_column": "early_career_author_ratio",
+            "y_column": "mid_career_author_ratio",
+        },
         {
             "x_column": "early_career_author_ratio",
             "y_column": "senior_author_ratio",
-        },  # Panel C
+        },
+        {
+            "x_column": "mid_career_author_ratio",
+            "y_column": "senior_author_ratio",
+        },
     ]
 
     matrix_tables = pnas_si_matrix_tables_from_heatmaps(
@@ -1775,7 +1836,9 @@ def main():
     )
 
     for i, tex in enumerate(matrix_tables, 1):
-        with open(f"Final_Figures/Final_disruption_matrix_panels_{i}.tex", "w") as f:
+        with open(
+            f"MidCareer_Figures/Final_disruption_matrix_panels_{i}.tex", "w"
+        ) as f:
             f.write(tex)
 
     del pivot_dfs_disruption, plot_configs, matrix_tables
@@ -1787,16 +1850,16 @@ def main():
         main_columns=[
             "first_time_author_ratio",
             "early_career_author_ratio",
+            "mid_career_author_ratio",
             "senior_author_ratio",
         ],
         cmap="Purples",
         min_group_size=100,
-        save_path="Final_Figures/Final_Atyp_Median_Z_heatmaps_by_author_ratios.pdf",
+        save_path="MidCareer_Figures/Final_Atyp_Median_Z_heatmaps_by_author_ratios.pdf",
     )
     plt.close(fig)
     del fig, axes, pivot_dfs
     gc.collect()
-
 
     top_combination_based_on_median = analyze_author_count_combinations(
         final_df, 10000, method="median"
@@ -1809,21 +1872,23 @@ def main():
 
     create_team_disruption_svg_direct(
         top_combination_based_on_mean,
-        output_filename="Final_Figures/Final_team_disruption_based_on_mean.svg",
+        output_filename="MidCareer_Figures/Final_team_disruption_based_on_mean.svg",
         top_n=25,
         method="mean",
     )
 
     create_team_disruption_svg_direct(
         top_combination_based_on_median,
-        output_filename="Final_Figures/Final_team_disruption_based_on_median.svg",
+        output_filename="MidCareer_Figures/Final_team_disruption_based_on_median.svg",
         top_n=25,
         method="median",
     )
 
     top_50_mean = top_combination_based_on_mean.head(50)
     top_50_mean["other_author_count"] = (
-        top_50_mean["early_career_author_count"] + top_50_mean["senior_author_count"]
+        top_50_mean["early_career_author_count"]
+        + top_50_mean["mid_career_author_count"]
+        + top_50_mean["senior_author_count"]
     )
 
     count = (
