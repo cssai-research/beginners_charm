@@ -1670,44 +1670,6 @@ def main():
 
     final_df = load_full_disruption_data()
 
-    # Keep only necessary columns to reduce memory usage
-    necessary_columns = [
-        # Career ratios
-        "first_time_author_ratio",
-        "early_career_author_ratio",
-        "mid_career_author_ratio",
-        "senior_author_ratio",
-        # Career counts
-        "first_time_author_count",
-        "early_career_author_count",
-        "mid_career_author_count",
-        "senior_author_count",
-        # Team info
-        "team_size",
-        # Target variables
-        "disruption",
-        "disruption_percentile",
-        "C10",
-        "c10_percentile",
-        "Atyp_Median_Z",
-        # Disruption percentiles by career stage
-        "senior_author_disruption_percentile",
-        "early_career_disruption_percentile",
-        "mid_career_disruption_percentile",
-        # Additional analysis columns (if needed)
-        "avg_disruption",
-        "avg_disruption_percentile",
-        "avg_citation_count",
-        "avg_citation_count_percentile",
-    ]
-
-    # Filter to only necessary columns
-    final_df = final_df[necessary_columns]
-    gc.collect()
-
-    print(f"Memory optimized. Columns kept: {len(final_df.columns)}")
-    print(f"DataFrame shape: {final_df.shape}")
-
     ################### Teams with higher beginner-author ratios are more disruptive and innovative ###################
     print(
         "Section: Teams with higher beginner-author ratios are more disruptive and innovative"
