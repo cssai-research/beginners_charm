@@ -56,3 +56,19 @@ Once the data is available in the `/data` folder, proceed with the statistical a
 
 4. **`perform_midcareer_analysis.py`**  
    Generates mid-career related analyses as detailed in the supplementary materials.
+
+### FAQ
+
+**Q: I do not have gcloud-sdk installed and encounter an error with the line `bq_client = bigquery.Client(project=project_id)`. How can I resolve this?**
+
+**A:** You can use Google Colab as an alternative. Follow these steps:
+
+1. Open Google Colab and authenticate your account:
+```python
+from google.colab import auth
+auth.authenticate_user()
+```
+
+2. In the next cell, copy the contents of the Python file and execute it.
+
+3. Ensure your Colab account has owner access to the GCP project.
