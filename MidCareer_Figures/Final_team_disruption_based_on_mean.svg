@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="1000" height="800" fill="white"/>
+        <style>
+            .title { font-size: 18px; font-weight: bold; }
+            .axis-label { font-size: 12px; }
+            .tick-label { font-size: 10px; }
+            .bar { stroke: #888; stroke-width: 0.5; }
+            .bar-label { font-size: 10px; }
+            .legend { font-size: 10px; }
+        </style>
+
+         <!-- Title (centered) -->
+        <text class="title" x="500.0" y="25" text-anchor="middle">Career-Stage Based Team Composition and Mean Disruption</text>
+
+        <!-- X-axis label -->
+        <text class="axis-label" x="540.0" y="785" text-anchor="middle">Mean Disruption Percentile</text>
+
+        <!-- X-axis -->
+        <line x1="200" y1="740" x2="880" y2="740" stroke="black" />
+    
+        <line x1="200.0" y1="740" x2="200.0" y2="745" stroke="black" />
+        <text class="tick-label" x="200.0" y="755" text-anchor="middle">50</text>
+        
+        <line x1="370.0" y1="740" x2="370.0" y2="745" stroke="black" />
+        <text class="tick-label" x="370.0" y="755" text-anchor="middle">55</text>
+        
+        <line x1="540.0" y1="740" x2="540.0" y2="745" stroke="black" />
+        <text class="tick-label" x="540.0" y="755" text-anchor="middle">60</text>
+        
+        <line x1="710.0" y1="740" x2="710.0" y2="745" stroke="black" />
+        <text class="tick-label" x="710.0" y="755" text-anchor="middle">65</text>
+        
+        <line x1="880.0" y1="740" x2="880.0" y2="745" stroke="black" />
+        <text class="tick-label" x="880.0" y="755" text-anchor="middle">70</text>
+        
+        <text class="tick-label" x="190" y="54.0" text-anchor="end" dy="0.35em">🌱🌱🌱</text>
+        
+                <rect class="bar" x="200" y="45.6"
+                      width="462.41738718470515" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+        <text class="bar-label" x="667.4173871847051" y="54.0" dy="0.35em">
+            63.60 <tspan fill="#888">n = 58,525.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="82.0" text-anchor="end" dy="0.35em">🌱🌱</text>
+        
+                <rect class="bar" x="200" y="73.6"
+                      width="448.8872607755792" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+        <text class="bar-label" x="653.8872607755792" y="82.0" dy="0.35em">
+            63.20 <tspan fill="#888">n = 172,021.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="110.0" text-anchor="end" dy="0.35em">🌱🌱🌱🌱</text>
+        
+                <rect class="bar" x="200" y="101.6"
+                      width="429.91253923941673" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+        <text class="bar-label" x="634.9125392394167" y="110.0" dy="0.35em">
+            62.64 <tspan fill="#888">n = 21,282.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="138.0" text-anchor="end" dy="0.35em">🌱</text>
+        
+                <rect class="bar" x="200" y="129.6"
+                      width="427.90156064053394" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+        <text class="bar-label" x="632.901560640534" y="138.0" dy="0.35em">
+            62.59 <tspan fill="#888">n = 828,448.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="166.0" text-anchor="end" dy="0.35em">🌱🌱🚀</text>
+        
+                <rect class="bar" x="200" y="157.6"
+                      width="261.2427560857834" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="461.2427560857834" y="157.6"
+                      width="130.6213780428917" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="596.8641341286751" y="166.0" dy="0.35em">
+            61.53 <tspan fill="#888">n = 76,121.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="194.0" text-anchor="end" dy="0.35em">🌱🌱🌱🚀</text>
+        
+                <rect class="bar" x="200" y="185.6"
+                      width="290.49824829556167" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="490.49824829556167" y="185.6"
+                      width="96.83274943185388" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="592.3309977274155" y="194.0" dy="0.35em">
+            61.39 <tspan fill="#888">n = 23,849.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="222.0" text-anchor="end" dy="0.35em">🌱🌱🌱⭐</text>
+        
+                <rect class="bar" x="200" y="213.6"
+                      width="252.27627059912024" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="452.27627059912027" y="213.6"
+                      width="84.09209019970675" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="541.368360798827" y="222.0" dy="0.35em">
+            59.89 <tspan fill="#888">n = 19,151.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="250.0" text-anchor="end" dy="0.35em">🌱🌱🚀🚀</text>
+        
+                <rect class="bar" x="200" y="241.6"
+                      width="167.09776864339003" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="367.09776864339005" y="241.6"
+                      width="167.09776864339003" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="539.1955372867801" y="250.0" dy="0.35em">
+            59.83 <tspan fill="#888">n = 20,543.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="278.0" text-anchor="end" dy="0.35em">🌱🚀🚀</text>
+        
+                <rect class="bar" x="200" y="269.6"
+                      width="111.11031001259127" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="311.1103100125913" y="269.6"
+                      width="222.22062002518254" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="538.3309300377739" y="278.0" dy="0.35em">
+            59.80 <tspan fill="#888">n = 68,181.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="306.0" text-anchor="end" dy="0.35em">🌱🌱🌱🌱🧠</text>
+        
+                <rect class="bar" x="200" y="297.6"
+                      width="255.75699382993986" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="455.75699382993986" y="297.6"
+                      width="63.939248457484965" height="16.799999999999997"
+                      fill="#31688e" />
+                
+        <text class="bar-label" x="524.6962422874249" y="306.0" dy="0.35em">
+            59.40 <tspan fill="#888">n = 13,789.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="334.0" text-anchor="end" dy="0.35em">🌱🚀</text>
+        
+                <rect class="bar" x="200" y="325.6"
+                      width="154.50825446034926" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="354.50825446034924" y="325.6"
+                      width="154.50825446034926" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="514.0165089206985" y="334.0" dy="0.35em">
+            59.09 <tspan fill="#888">n = 266,959.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="362.0" text-anchor="end" dy="0.35em">🌱🌱⭐</text>
+        
+                <rect class="bar" x="200" y="353.6"
+                      width="196.9015676137025" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="396.90156761370247" y="353.6"
+                      width="98.45078380685125" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="500.35235142055376" y="362.0" dy="0.35em">
+            58.69 <tspan fill="#888">n = 72,501.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="390.0" text-anchor="end" dy="0.35em">🌱🌱⭐⭐</text>
+        
+                <rect class="bar" x="200" y="381.6"
+                      width="132.93984417459697" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="332.93984417459694" y="381.6"
+                      width="132.93984417459697" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="470.87968834919394" y="390.0" dy="0.35em">
+            57.82 <tspan fill="#888">n = 13,864.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="418.0" text-anchor="end" dy="0.35em">🌱🚀🚀🚀</text>
+        
+                <rect class="bar" x="200" y="409.6"
+                      width="66.10194766086967" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="266.10194766086966" y="409.6"
+                      width="198.30584298260902" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="469.4077906434787" y="418.0" dy="0.35em">
+            57.78 <tspan fill="#888">n = 14,501.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="446.0" text-anchor="end" dy="0.35em">🌱🌱🌱🧠</text>
+        
+                <rect class="bar" x="200" y="437.6"
+                      width="195.72838887275503" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="395.72838887275503" y="437.6"
+                      width="65.24279629091835" height="16.799999999999997"
+                      fill="#31688e" />
+                
+        <text class="bar-label" x="465.9711851636734" y="446.0" dy="0.35em">
+            57.68 <tspan fill="#888">n = 47,119.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="474.0" text-anchor="end" dy="0.35em">🌱🌱🚀⭐</text>
+        
+                <rect class="bar" x="200" y="465.6"
+                      width="124.2567983423045" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="324.2567983423045" y="465.6"
+                      width="62.12839917115225" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+                <rect class="bar" x="386.3851975134567" y="465.6"
+                      width="62.12839917115225" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="453.513596684609" y="474.0" dy="0.35em">
+            57.31 <tspan fill="#888">n = 29,992.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="502.0" text-anchor="end" dy="0.35em">🚀🚀🚀</text>
+        
+                <rect class="bar" x="200" y="493.6"
+                      width="229.13200830766868" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="434.1320083076687" y="502.0" dy="0.35em">
+            56.74 <tspan fill="#888">n = 35,658.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="530.0" text-anchor="end" dy="0.35em">🌱🌱🧠</text>
+        
+                <rect class="bar" x="200" y="521.6"
+                      width="145.0979210562443" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="345.09792105624433" y="521.6"
+                      width="72.54896052812215" height="16.799999999999997"
+                      fill="#31688e" />
+                
+        <text class="bar-label" x="422.6468815843665" y="530.0" dy="0.35em">
+            56.40 <tspan fill="#888">n = 192,074.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="558.0" text-anchor="end" dy="0.35em">🌱🚀⭐</text>
+        
+                <rect class="bar" x="200" y="549.6"
+                      width="71.34702834450022" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="271.34702834450025" y="549.6"
+                      width="71.34702834450022" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+                <rect class="bar" x="342.6940566890005" y="549.6"
+                      width="71.34702834450022" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="419.0410850335006" y="558.0" dy="0.35em">
+            56.30 <tspan fill="#888">n = 116,192.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="586.0" text-anchor="end" dy="0.35em">🌱🌱🌱🚀🧠</text>
+        
+                <rect class="bar" x="200" y="577.6"
+                      width="126.56696079613477" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="326.56696079613477" y="577.6"
+                      width="42.18898693204493" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+                <rect class="bar" x="368.7559477281797" y="577.6"
+                      width="42.18898693204493" height="16.799999999999997"
+                      fill="#31688e" />
+                
+        <text class="bar-label" x="415.9449346602246" y="586.0" dy="0.35em">
+            56.20 <tspan fill="#888">n = 20,657.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="614.0" text-anchor="end" dy="0.35em">🌱🌱🌱⭐🧠</text>
+        
+                <rect class="bar" x="200" y="605.6"
+                      width="126.18321173953021" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="326.1832117395302" y="605.6"
+                      width="42.0610705798434" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+                <rect class="bar" x="368.2442823193736" y="605.6"
+                      width="42.0610705798434" height="16.799999999999997"
+                      fill="#31688e" />
+                
+        <text class="bar-label" x="415.30535289921704" y="614.0" dy="0.35em">
+            56.19 <tspan fill="#888">n = 16,694.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="642.0" text-anchor="end" dy="0.35em">🌱⭐⭐</text>
+        
+                <rect class="bar" x="200" y="633.6"
+                      width="69.96390723368312" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="269.96390723368313" y="633.6"
+                      width="139.92781446736623" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="414.8917217010494" y="642.0" dy="0.35em">
+            56.17 <tspan fill="#888">n = 57,714.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="670.0" text-anchor="end" dy="0.35em">🌱🚀🚀⭐</text>
+        
+                <rect class="bar" x="200" y="661.6"
+                      width="48.83280321378059" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="248.8328032137806" y="661.6"
+                      width="97.66560642756119" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+                <rect class="bar" x="346.4984096413418" y="661.6"
+                      width="48.83280321378059" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="400.3312128551224" y="670.0" dy="0.35em">
+            55.75 <tspan fill="#888">n = 28,536.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="698.0" text-anchor="end" dy="0.35em">🌱⭐</text>
+        
+                <rect class="bar" x="200" y="689.6"
+                      width="94.5624927048862" height="16.799999999999997"
+                      fill="#b5de2b" />
+                
+                <rect class="bar" x="294.5624927048862" y="689.6"
+                      width="94.5624927048862" height="16.799999999999997"
+                      fill="#1f9e89" />
+                
+        <text class="bar-label" x="394.1249854097724" y="698.0" dy="0.35em">
+            55.56 <tspan fill="#888">n = 317,635.0</tspan>
+        </text>
+        
+        <text class="tick-label" x="190" y="726.0" text-anchor="end" dy="0.35em">🚀</text>
+        
+                <rect class="bar" x="200" y="717.6"
+                      width="177.04356647773864" height="16.799999999999997"
+                      fill="#6ece58" />
+                
+        <text class="bar-label" x="382.04356647773864" y="726.0" dy="0.35em">
+            55.21 <tspan fill="#888">n = 1,193,168.0</tspan>
+        </text>
+        
+    <rect x="880" y="330.0" width="130" height="120" fill="white" stroke="#ddd" />
+    
+        <rect x="890" y="340.0" width="10" height="10" fill="#b5de2b" />
+        <text x="905" y="348.0" class="legend">🌱 First Time</text>
+        
+        <rect x="890" y="360.0" width="10" height="10" fill="#6ece58" />
+        <text x="905" y="368.0" class="legend">🚀 Early Career</text>
+        
+        <rect x="890" y="380.0" width="10" height="10" fill="#1f9e89" />
+        <text x="905" y="388.0" class="legend">⭐ Mid Career</text>
+        
+        <rect x="890" y="400.0" width="10" height="10" fill="#31688e" />
+        <text x="905" y="408.0" class="legend">🧠 Senior</text>
+        </svg>
