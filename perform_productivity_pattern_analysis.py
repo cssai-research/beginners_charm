@@ -8,20 +8,23 @@ import pandas as pd
 from scipy.stats import ttest_ind, mannwhitneyu
 from google.cloud import bigquery
 
+BIGQUERY_PROJECT = "sciscinet-mahdee-483915"  # replace this with your GCP project name
+DISRUPTION_DATASET = "Disruption"
+
+START_YEAR = 1941
+
 
 def get_productivity_pattern_data():
-    BIGQUERY_PROJECT = "scisci-cssai-usf"  # replace this with your GCP project name
-    DISRUPTION_DATASET = "Disruption"
-
     bq_client = bigquery.Client(project=BIGQUERY_PROJECT)
 
     BQ_SQL = f""" 
-    SELECT Career_Age, 
-        AVG(Paper_Count_In_Year) as AVG_Num_Of_Paper_In_Year,
-        STDDEV(Paper_Count_In_Year) as STD_Paper_Count,
-        COUNT(Paper_Count_In_Year) as COUNT_Paper_Count
+    SELECT career_age AS Career_Age, 
+        AVG(paper_count_in_year) as AVG_Num_Of_Paper_In_Year,
+        STDDEV(paper_count_in_year) as STD_Paper_Count,
+        COUNT(paper_count_in_year) as COUNT_Paper_Count
     FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.All_Yearly_Author_Profiles` 
-    WHERE Paper_Count_In_Year > 0
+    WHERE paper_count_in_year > 0
+    AND year >= {START_YEAR}
     GROUP BY Career_Age
     HAVING Career_Age < 80
     ORDER BY Career_Age ASC
