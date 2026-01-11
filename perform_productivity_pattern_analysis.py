@@ -29,11 +29,15 @@ def get_productivity_pattern_data():
 
     job = bq_client.query(BQ_SQL)
     temp_df = job.to_dataframe()
-    temp_df["STD_ERR"] = temp_df["STD_Paper_Count"] / np.sqrt(temp_df["COUNT_Paper_Count"])
+    temp_df["STD_ERR"] = temp_df["STD_Paper_Count"] / np.sqrt(
+        temp_df["COUNT_Paper_Count"]
+    )
     temp_df.to_csv("data/average_num_of_papers_by_career_age.csv", index=False)
+
 
 def setup_plotting_style():
     sns.set(context="talk", style="whitegrid")
+
 
 def get_career_stage(career_age):
     if career_age == 0:
@@ -42,7 +46,8 @@ def get_career_stage(career_age):
         return "Early-Career"
     else:
         return "Senior"
-    
+
+
 def plot_career_age_vs_yearly_paper(df, show_avg=True, save_path=None):
     setup_plotting_style()
 
@@ -127,7 +132,7 @@ def plot_career_age_vs_yearly_paper(df, show_avg=True, save_path=None):
     plt.legend(title="Career Stage", loc="lower right")
 
     if save_path:
-        plt.savefig(save_path, bbox_inches="tight", dpi = 300)
+        plt.savefig(save_path, bbox_inches="tight", dpi=300)
     plt.show()
 
 
@@ -235,8 +240,6 @@ def test_first_time_difference(df):
         print(f"Error in Kruskal-Wallis test: {e}")
 
 
-
-
 def main():
     setup_plotting_style()
     get_productivity_pattern_data()
@@ -254,7 +257,9 @@ def main():
     print("\nCareer Age vs Average Papers with Increase:")
     print(subset[["Career_Age", "AVG_Num_Of_Paper_In_Year", "Increase"]])
 
-    plot_career_age_vs_yearly_paper(df, False, "Final_Figures/Sup_2_Career_Age_Vs_Avg_Paper.pdf")
+    plot_career_age_vs_yearly_paper(
+        df, False, "Final_Figures/Sup_2_Career_Age_Vs_Avg_Paper.pdf"
+    )
 
     test_first_time_difference(df)
 

@@ -3,7 +3,7 @@ import time
 from google.cloud import bigquery
 
 ## Constants
-BIGQUERY_PROJECT = "scisciresearch-mahdee"  # replace this with your GCP project name
+BIGQUERY_PROJECT = "sciscinet-mahdee-483915"  # replace this with your GCP project ID
 SCISCINET_DATASET = "SciSciNet"
 DISRUPTION_DATASET = "Disruption"
 
@@ -118,6 +118,7 @@ def create_all_yearly_author_profiles():
             is_mid_career_author,
             is_senior_author
         FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_author_profile_{year}`
+        WHERE paper_count_in_year > 0
         """
 
     # Execute the query
@@ -447,67 +448,68 @@ def add_reference_metrics():
 
 def add_field_name():
     """
-    Add field_name column to the disruption_analysis table.
-    If a paper has multiple fields, only the first one (by fieldid) is kept.
+    Add level_0_field_names and level_1_field_names columns to the disruption_analysis table.
+    Each column contains an array of field names for the respective level.
     """
-    print("Adding field_name column to disruption_analysis table...")
+    print("Adding field name arrays to disruption_analysis table...")
 
-    # Create a temporary table with the first field for each paper
+    # Create a temporary table with aggregated field names by level
     temp_paper_fields_query = f"""
-    CREATE OR REPLACE TABLE `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_first_field` AS
-    WITH RankedFields AS (
-        SELECT 
-            pf.paperid,
-            f.display_name as field_name,
-            ROW_NUMBER() OVER (PARTITION BY pf.paperid ORDER BY pf.fieldid) as rn
-        FROM `{BIGQUERY_PROJECT}.{SCISCINET_DATASET}.SciSciNet_PaperFields` pf
-        JOIN `{BIGQUERY_PROJECT}.{SCISCINET_DATASET}.SciSciNet_Fields` f
-        ON pf.fieldid = f.fieldid
-    )
+    CREATE OR REPLACE TABLE `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_fields_by_level` AS
     SELECT 
-        paperid,
-        field_name
-    FROM RankedFields
-    WHERE rn = 1
+        pf.paperid,
+        ARRAY_AGG(DISTINCT CASE WHEN f.level = 0 THEN f.display_name ELSE NULL END IGNORE NULLS) AS level_0_field_names,
+        ARRAY_AGG(DISTINCT CASE WHEN f.level = 1 THEN f.display_name ELSE NULL END IGNORE NULLS) AS level_1_field_names
+    FROM `{BIGQUERY_PROJECT}.{SCISCINET_DATASET}.SciSciNet_PaperFields` pf
+    JOIN `{BIGQUERY_PROJECT}.{SCISCINET_DATASET}.SciSciNet_Fields` f
+        ON pf.fieldid = f.fieldid
+    WHERE f.level IN (0, 1)
+    GROUP BY pf.paperid
     """
 
-    print("Creating temporary table with first field for each paper...")
+    print("Creating temporary table with field names by level...")
     temp_job = client.query(temp_paper_fields_query)
     temp_job.result()
     print("Temporary paper fields table created successfully.")
 
-    # Update the disruption_analysis table to include field_name
+    # Update the disruption_analysis table to include the field name arrays
     update_query = f"""
     CREATE OR REPLACE TABLE `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.disruption_analysis` AS
     SELECT
         da.*,
-        COALESCE(tpf.field_name, 'Unknown') AS field_name
+        COALESCE(tpf.level_0_field_names, []) AS level_0_field_names,
+        COALESCE(tpf.level_1_field_names, []) AS level_1_field_names
     FROM 
         `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.disruption_analysis` da
     LEFT JOIN
-        `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_first_field` tpf
+        `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_fields_by_level` tpf
     ON
         da.paperid = tpf.paperid
     """
 
-    print("Updating disruption_analysis table with field_name column...")
+    print("Updating disruption_analysis table with field name arrays...")
     update_job = client.query(update_query)
     update_job.result()
-    print("Added field_name column to disruption_analysis table successfully.")
+    print(
+        "Added level_0_field_names and level_1_field_names columns to disruption_analysis table successfully."
+    )
 
     # Clean up the temporary table
     print("Cleaning up temporary table...")
     client.delete_table(
-        f"{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_first_field"
+        f"{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.temp_paper_fields_by_level"
     )
     print("Temporary table deleted successfully.")
 
-    # Get a count of papers with and without field names for validation
+    # Get validation statistics
     validation_query = f"""
     SELECT 
         COUNT(*) as total_papers,
-        COUNTIF(field_name != 'Unknown') as papers_with_fields,
-        COUNTIF(field_name = 'Unknown') as papers_without_fields
+        COUNTIF(ARRAY_LENGTH(level_0_field_names) > 0) as papers_with_level_0_fields,
+        COUNTIF(ARRAY_LENGTH(level_1_field_names) > 0) as papers_with_level_1_fields,
+        COUNTIF(ARRAY_LENGTH(level_0_field_names) = 0 AND ARRAY_LENGTH(level_1_field_names) = 0) as papers_without_fields,
+        AVG(ARRAY_LENGTH(level_0_field_names)) as avg_level_0_fields_per_paper,
+        AVG(ARRAY_LENGTH(level_1_field_names)) as avg_level_1_fields_per_paper
     FROM `{BIGQUERY_PROJECT}.{DISRUPTION_DATASET}.disruption_analysis`
     """
 
@@ -517,8 +519,15 @@ def add_field_name():
     for row in results:
         print(f"Validation results:")
         print(f"  Total papers: {row.total_papers}")
-        print(f"  Papers with fields: {row.papers_with_fields}")
-        print(f"  Papers without fields: {row.papers_without_fields}")
+        print(f"  Papers with level 0 fields: {row.papers_with_level_0_fields}")
+        print(f"  Papers with level 1 fields: {row.papers_with_level_1_fields}")
+        print(f"  Papers without any fields: {row.papers_without_fields}")
+        print(
+            f"  Average level 0 fields per paper: {row.avg_level_0_fields_per_paper:.2f}"
+        )
+        print(
+            f"  Average level 1 fields per paper: {row.avg_level_1_fields_per_paper:.2f}"
+        )
 
 
 def clean_data():
