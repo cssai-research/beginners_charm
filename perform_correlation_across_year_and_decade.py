@@ -7,6 +7,7 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 
 # warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
 def find_correlation_coefficient(df, column_1, column_2, column_3=None):
     """
     Calculate correlation coefficients (Pearson, Spearman, Kendall) between two variables
@@ -161,7 +162,7 @@ def find_correlation_coefficient(df, column_1, column_2, column_3=None):
 
 def perform_yearly_disruption_correlations_on_full_data(
     filepath="data/disruption_analysis.csv", chunksize=1000000
-): 
+):
     """This function finds correlation coefficient of beginner_author_ratio, disruption_percentile, year on all data"""
     print(f"Reading CSV in chunks from: {filepath}")
     required_cols = [
@@ -206,12 +207,22 @@ def perform_yearly_disruption_correlations_on_full_data(
     # Removing problematic data (if any)
     df = df[
         ~((df["first_time_author_ratio"] == 1) & (df["avg_career_age"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["senior_author_avg_disruption"] > 0))
+        & ~(
+            (df["first_time_author_ratio"] == 1)
+            & (df["senior_author_avg_disruption"] > 0)
+        )
         & ~((df["first_time_author_ratio"] == 1) & (df["senior_author_ratio"] > 0))
         & ~((df["first_time_author_ratio"] == 1) & (df["mid_career_author_ratio"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["mid_author_avg_disruption"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["early_career_author_ratio"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["early_author_avg_disruption"] > 0))
+        & ~(
+            (df["first_time_author_ratio"] == 1) & (df["mid_author_avg_disruption"] > 0)
+        )
+        & ~(
+            (df["first_time_author_ratio"] == 1) & (df["early_career_author_ratio"] > 0)
+        )
+        & ~(
+            (df["first_time_author_ratio"] == 1)
+            & (df["early_author_avg_disruption"] > 0)
+        )
     ]
 
     df[f"disruption_percentile"] = df["disruption"].rank(pct=True) * 100
@@ -221,7 +232,6 @@ def perform_yearly_disruption_correlations_on_full_data(
     print(df["decade"].value_counts().sort_index())
 
     # find disruption percentile
-    
 
     # print("Correlation Coefficient Between Beginner Author Ratio and Disruption Percentile by Year")
     # print(find_correlation_coefficient(df, "first_time_author_ratio", "disruption_percentile", "year"))
@@ -230,17 +240,20 @@ def perform_yearly_disruption_correlations_on_full_data(
     # print(find_correlation_coefficient(df, "first_time_author_ratio", "disruption_percentile", "decade"))
 
     print("Debugging 1940")
-    year_1940 = df[df['year'] == 1940]
-    print(f"Unique first_time_author_ratio values: {year_1940['first_time_author_ratio'].nunique()}")
-    print(f"Unique first_time_author_ratio values: {year_1940['first_time_author_ratio'].value_counts()}")
-    print(f"Unique disruption_percentile values: {year_1940['disruption_percentile'].nunique()}")
+    year_1940 = df[df["year"] == 1940]
+    print(
+        f"Unique first_time_author_ratio values: {year_1940['first_time_author_ratio'].nunique()}"
+    )
+    print(
+        f"Unique first_time_author_ratio values: {year_1940['first_time_author_ratio'].value_counts()}"
+    )
+    print(
+        f"Unique disruption_percentile values: {year_1940['disruption_percentile'].nunique()}"
+    )
 
 
 if __name__ == "__main__":
     perform_yearly_disruption_correlations_on_full_data()
-
-
-    
 
 
 # Number of Papers in Different Year Ranges:

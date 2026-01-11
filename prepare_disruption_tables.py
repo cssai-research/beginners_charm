@@ -490,7 +490,9 @@ def add_field_name():
     print("Updating disruption_analysis table with field name arrays...")
     update_job = client.query(update_query)
     update_job.result()
-    print("Added level_0_field_names and level_1_field_names columns to disruption_analysis table successfully.")
+    print(
+        "Added level_0_field_names and level_1_field_names columns to disruption_analysis table successfully."
+    )
 
     # Clean up the temporary table
     print("Cleaning up temporary table...")
@@ -520,8 +522,12 @@ def add_field_name():
         print(f"  Papers with level 0 fields: {row.papers_with_level_0_fields}")
         print(f"  Papers with level 1 fields: {row.papers_with_level_1_fields}")
         print(f"  Papers without any fields: {row.papers_without_fields}")
-        print(f"  Average level 0 fields per paper: {row.avg_level_0_fields_per_paper:.2f}")
-        print(f"  Average level 1 fields per paper: {row.avg_level_1_fields_per_paper:.2f}")
+        print(
+            f"  Average level 0 fields per paper: {row.avg_level_0_fields_per_paper:.2f}"
+        )
+        print(
+            f"  Average level 1 fields per paper: {row.avg_level_1_fields_per_paper:.2f}"
+        )
 
 
 def clean_data():

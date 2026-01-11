@@ -120,12 +120,22 @@ def load_full_disruption_data(
     # Removing problematic data (if any)
     df = df[
         ~((df["first_time_author_ratio"] == 1) & (df["avg_career_age"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["senior_author_avg_disruption"] > 0))
+        & ~(
+            (df["first_time_author_ratio"] == 1)
+            & (df["senior_author_avg_disruption"] > 0)
+        )
         & ~((df["first_time_author_ratio"] == 1) & (df["senior_author_ratio"] > 0))
         & ~((df["first_time_author_ratio"] == 1) & (df["mid_career_author_ratio"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["mid_author_avg_disruption"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["early_career_author_ratio"] > 0))
-        & ~((df["first_time_author_ratio"] == 1) & (df["early_author_avg_disruption"] > 0))
+        & ~(
+            (df["first_time_author_ratio"] == 1) & (df["mid_author_avg_disruption"] > 0)
+        )
+        & ~(
+            (df["first_time_author_ratio"] == 1) & (df["early_career_author_ratio"] > 0)
+        )
+        & ~(
+            (df["first_time_author_ratio"] == 1)
+            & (df["early_author_avg_disruption"] > 0)
+        )
     ]
 
     # In the preperation script early_career = 1-5 and mid_career = 6-10

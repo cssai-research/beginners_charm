@@ -32,7 +32,7 @@ def export_bq_table_to_csv(
 
     # Create a temporary table with arrays converted to strings
     temp_table_id = f"{project_id}.{dataset_id}.temp_{bq_table_name}_export"
-    
+
     # Query to convert arrays to pipe-delimited strings
     convert_query = f"""
     CREATE OR REPLACE TABLE `{temp_table_id}` AS
@@ -88,7 +88,7 @@ def export_bq_table_to_csv(
         ARRAY_TO_STRING(level_1_field_names, '|') AS level_1_field_names
     FROM `{full_table_id}`
     """
-    
+
     print("Converting array columns to delimited strings...")
     convert_job = bq_client.query(convert_query)
     convert_job.result()
@@ -116,7 +116,9 @@ def export_bq_table_to_csv(
     print(f"Found {len(intermediate_blobs)} intermediate files to combine")
 
     # Use a temporary file instead of StringIO to avoid memory explosion
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False, encoding="utf-8") as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w+", delete=False, encoding="utf-8"
+    ) as tmp_file:
         for i, blob in enumerate(intermediate_blobs):
             print(f"Processing file {i+1}/{len(intermediate_blobs)}: {blob.name}")
 

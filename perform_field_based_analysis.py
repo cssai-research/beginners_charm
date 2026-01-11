@@ -740,21 +740,23 @@ def main():
     print("Creating Level 0 dataframe...")
     df_level_0 = final_df[final_df["level_0_field_names"].apply(len) > 0].copy()
     df_level_0 = df_level_0.explode("level_0_field_names").reset_index(drop=True)
-    df_level_0.rename(columns={"level_0_field_names": "field_name"}, inplace=True)
-    df_level_0 = df_level_0[df_level_0["field_name"].notna()].copy()
+    df_level_0.rename(columns={"level_0_field_names": "level_0_field"}, inplace=True)
+    df_level_0 = df_level_0[df_level_0["level_0_field"].notna()].copy()
 
     # Drop level_1_field_names from level_0 dataframe
     df_level_0.drop(columns=["level_1_field_names"], inplace=True, errors="ignore")
 
     print(f"Level 0 dataframe shape: {df_level_0.shape}")
-    print(f"Number of unique level 0 fields: {df_level_0['field_name'].nunique()}")
-    print(f"Level 0 field value counts:\n{df_level_0['field_name'].value_counts()}\n")
+    print(f"Number of unique level 0 fields: {df_level_0['level_0_field'].nunique()}")
+    print(
+        f"Level 0 field value counts:\n{df_level_0['level_0_field'].value_counts()}\n"
+    )
     gc.collect()
 
     # Calculate correlation coefficients for Level 0 fields
     print("Calculating correlation coefficients for Level 0 fields...")
     out_df_level_0 = find_correlation_coefficient(
-        df_level_0, "first_time_author_ratio", "disruption_percentile", "field_name"
+        df_level_0, "first_time_author_ratio", "disruption_percentile", "level_0_field"
     )
     print("Level 0 Correlations:")
     print(out_df_level_0)
@@ -765,7 +767,7 @@ def main():
     fig, axes = plot_firsttime_authors_by_field_grid(
         df=df_level_0,
         target_column="disruption_percentile",
-        field_column="field_name",
+        field_column="level_0_field",
         fields_to_plot=None,
         save_path="Final_Figures/Final_Disruption_by_First_Time_Author_Ratio_level_0_fields_1-8.pdf",
     )
@@ -795,12 +797,14 @@ def main():
     print("Creating Level 1 dataframe...")
     df_level_1 = final_df[final_df["level_1_field_names"].apply(len) > 0].copy()
     df_level_1 = df_level_1.explode("level_1_field_names").reset_index(drop=True)
-    df_level_1.rename(columns={"level_1_field_names": "field_name"}, inplace=True)
-    df_level_1 = df_level_1[df_level_1["field_name"].notna()].copy()
+    df_level_1.rename(columns={"level_1_field_names": "level_1_field"}, inplace=True)
+    df_level_1 = df_level_1[df_level_1["level_1_field"].notna()].copy()
 
     print(f"Level 1 dataframe shape: {df_level_1.shape}")
-    print(f"Number of unique level 1 fields: {df_level_1['field_name'].nunique()}")
-    print(f"Level 1 field value counts:\n{df_level_1['field_name'].value_counts()}\n")
+    print(f"Number of unique level 1 fields: {df_level_1['level_1_field'].nunique()}")
+    print(
+        f"Level 1 field value counts:\n{df_level_1['level_1_field'].value_counts()}\n"
+    )
 
     # Clean up final_df as we don't need it anymore
     del final_df
@@ -809,7 +813,7 @@ def main():
     # Calculate correlation coefficients for Level 1 fields
     print("Calculating correlation coefficients for Level 1 fields...")
     out_df_level_1 = find_correlation_coefficient(
-        df_level_1, "first_time_author_ratio", "disruption_percentile", "field_name"
+        df_level_1, "first_time_author_ratio", "disruption_percentile", "level_1_field"
     )
     print("Level 1 Correlations:")
     print(out_df_level_1)
