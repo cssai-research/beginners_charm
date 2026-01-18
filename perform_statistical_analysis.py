@@ -60,8 +60,17 @@ def timer(func):
 
 @timer
 def load_full_disruption_data(
-    filepath="data/disruption_analysis.csv", chunksize=1000000
+    filepath="data/disruption_analysis.csv", chunksize=1000000, cached_df_path=None
 ):
+    # Check if cached version exists
+    if cached_df_path is not None and os.path.exists(cached_df_path):
+        print(f"Loading cached dataframe from: {cached_df_path}")
+        df = pd.read_pickle(cached_df_path)
+        print(f"Loaded cached dataframe with shape: {df.shape}")
+        print("Total Number of articles:", f"{len(df):,}")
+        print("=" * 80)
+        return df
+    
     print(f"Reading CSV in chunks from: {filepath}")
 
     required_cols = [
@@ -228,10 +237,24 @@ def load_full_disruption_data(
         "early_career_disruption_percentile"
     ].apply(percentile_group)
 
+    df.first_time_author_ratio = df.first_time_author_ratio.round(4)
+    df.early_career_author_ratio = df.early_career_author_ratio.round(4)
+    df.senior_author_ratio = df.senior_author_ratio.round(4)
+
     gc.collect()
 
     print(f"Final dataframe ready. Shape: {df.shape}")
     print("Total Number of articles:", f"{len(df):,}")
+
+    # Save to cache if path is provided
+    if cached_df_path is not None:
+        print(f"Saving dataframe to cache: {cached_df_path}")
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(cached_df_path), exist_ok=True)
+        df.to_pickle(cached_df_path)
+        print("Cache saved successfully!")
+        gc.collect()
+
     print("=" * 80)
     return df
 
@@ -411,7 +434,7 @@ def setup_plotting_style_mahdee():
 
 
 def setup_plotting_style():
-    sns.set(context="talk", style="whitegrid")
+    sns.set_theme(context="talk", style="whitegrid")
 
 
 @timer
@@ -434,6 +457,7 @@ def plot_team_size_by_career_ratios_grid(
     """
     Create a 2x4 grid of subplots, each showing the relationship between different career ratio variables
     and disruption score with confidence intervals for different team sizes.
+    Using raw data points for team sizes 1-7, binning only for team size 8+
     """
     setup_plotting_style()
     gc.collect()
@@ -445,7 +469,7 @@ def plot_team_size_by_career_ratios_grid(
             "senior_author_ratio",
         ]
 
-    # Create a 2x4 grid of subplots instead of 4x4
+    # Create a 2x4 grid of subplots
     fig, axes = plt.subplots(2, 4, figsize=(24, 12), sharex=True, sharey=True, dpi=300)
     axes_flat = axes.flatten()
 
@@ -467,12 +491,13 @@ def plot_team_size_by_career_ratios_grid(
         "senior_author_ratio": "Senior Authors",
     }
 
-    # Create plots for each team size - modified for 2x4 grid (8 total plots)
+    # Create plots for each team size
     if team_sizes is None:
-        team_sizes = list(range(1, 8)) + ["8+"]  # 1-7 individual, then "8+"
+        team_sizes = list(range(1, 8)) + ["8+"]
 
     needed_columns = career_columns + [target_column, "team_size"]
     df_slim = df[needed_columns].copy()
+    df_slim[career_columns] = df_slim[career_columns].round(3)
 
     for idx, team_size in enumerate(team_sizes):
         ax = axes_flat[idx]
@@ -481,9 +506,11 @@ def plot_team_size_by_career_ratios_grid(
         if team_size == "8+":
             subset = df_slim[df_slim["team_size"] >= 8].copy()
             title_text = "Team Size: 8+"
+            use_binning = True
         else:
             subset = df_slim[df_slim["team_size"] == team_size].copy()
             title_text = f"Team Size: {team_size}"
+            use_binning = False  # NO BINNING for team sizes 1-7
 
         if len(subset) == 0:
             continue
@@ -491,93 +518,168 @@ def plot_team_size_by_career_ratios_grid(
         for group_column in career_columns:
             results = []
 
-            # Handle zero values separately
-            zero_mask = subset[group_column] == 0
-            zero_values = subset.loc[zero_mask, target_column]
-            if len(zero_values) >= min_group_size:
-                zero_median = zero_values.median()
-                zero_std = zero_values.std()
-                zero_sem = zero_std / np.sqrt(len(zero_values))
+            if use_binning:
+                # Handle zero values separately
+                zero_mask = subset[group_column] == 0
+                zero_values = subset.loc[zero_mask, target_column]
+                if len(zero_values) >= min_group_size:
+                    zero_median = zero_values.median()
+                    zero_std = zero_values.std()
+                    zero_sem = zero_std / np.sqrt(len(zero_values))
 
-                if ci_method == "bootstrap":
-                    boot = np.random.choice(
-                        zero_values, (n_bootstrap, len(zero_values))
+                    if ci_method == "bootstrap":
+                        boot = np.random.choice(
+                            zero_values, (n_bootstrap, len(zero_values))
+                        )
+                        boot_meds = np.median(boot, axis=1)
+                        lower = np.percentile(boot_meds, (100 - ci) / 2)
+                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    else:
+                        z = 1.96
+                        lower = zero_median - z * zero_sem
+                        upper = zero_median + z * zero_sem
+
+                    results.append(
+                        {
+                            "x": 0,
+                            "median": zero_median,
+                            "count": len(zero_values),
+                            "median_ci_lower": lower,
+                            "median_ci_upper": upper,
+                        }
                     )
-                    boot_meds = np.median(boot, axis=1)
-                    lower = np.percentile(boot_meds, (100 - ci) / 2)
-                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                else:
-                    z = 1.96
-                    lower = zero_median - z * zero_sem
-                    upper = zero_median + z * zero_sem
 
-                results.append(
-                    {
-                        "x": 0,
-                        "median": zero_median,
-                        "count": len(zero_values),
-                        "median_ci_lower": lower,
-                        "median_ci_upper": upper,
-                    }
-                )
+                del zero_mask, zero_values
+                gc.collect()
 
-            del zero_mask, zero_values
-            gc.collect()
-
-            values = subset[subset[group_column] > 0][
-                [group_column, target_column]
-            ].dropna()
-            if len(values) == 0:
-                continue
-
-            # Binning
-            if binning_method == "equal":
-                bin_edges = np.linspace(0, 1, n_bins + 1)
-                values["bin"] = pd.cut(
-                    values[group_column], bins=bin_edges, include_lowest=True
-                )
-            else:
-                values["bin"] = pd.qcut(
-                    values[group_column], q=n_bins, duplicates="drop"
-                )
-
-            grouped = values.groupby("bin", observed=False)
-
-            for bin_interval, group in grouped:
-                if len(group) < min_group_size:
+                # Handle values between 0 and 1
+                values = subset[(subset[group_column] > 0) & (subset[group_column] < 1)][
+                    [group_column, target_column]
+                ].dropna()
+                if len(values) == 0:
                     continue
 
-                median = group[target_column].median()
-                std = group[target_column].std()
-                sem = std / np.sqrt(len(group))
-
-                if ci_method == "bootstrap":
-                    boot = np.random.choice(
-                        group[target_column], (n_bootstrap, len(group))
-                    )
-                    boot_meds = np.median(boot, axis=1)
-                    lower = np.percentile(boot_meds, (100 - ci) / 2)
-                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                else:
-                    z = 1.96
-                    lower = median - z * sem
-                    upper = median + z * sem
-
-                # Compute bin midpoint
+                # Binning
                 if binning_method == "equal":
-                    midpoint = bin_interval.mid
+                    bin_edges = np.linspace(0, 1, n_bins + 1)
+                    values["bin"] = pd.cut(
+                        values[group_column], bins=bin_edges, include_lowest=True
+                    )
                 else:
-                    midpoint = group[group_column].median()
+                    values["bin"] = pd.qcut(
+                        values[group_column], q=n_bins, duplicates="drop"
+                    )
 
-                results.append(
-                    {
-                        "x": midpoint,
-                        "median": median,
-                        "count": len(group),
-                        "median_ci_lower": lower,
-                        "median_ci_upper": upper,
-                    }
-                )
+                grouped = values.groupby("bin", observed=False)
+
+                for bin_interval, group in grouped:
+                    if len(group) < min_group_size:
+                        continue
+
+                    median = group[target_column].median()
+                    std = group[target_column].std()
+                    sem = std / np.sqrt(len(group))
+
+                    if ci_method == "bootstrap":
+                        boot = np.random.choice(
+                            group[target_column], (n_bootstrap, len(group))
+                        )
+                        boot_meds = np.median(boot, axis=1)
+                        lower = np.percentile(boot_meds, (100 - ci) / 2)
+                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    else:
+                        z = 1.96
+                        lower = median - z * sem
+                        upper = median + z * sem
+
+                    # Compute bin midpoint
+                    if binning_method == "equal":
+                        midpoint = bin_interval.mid
+                    else:
+                        midpoint = group[group_column].median()
+
+                    results.append(
+                        {
+                            "x": midpoint,
+                            "median": median,
+                            "count": len(group),
+                            "median_ci_lower": lower,
+                            "median_ci_upper": upper,
+                        }
+                    )
+
+                del values, bin_edges, grouped
+                gc.collect()
+
+                # Handle one values separately
+                one_mask = subset[group_column] == 1
+                one_values = subset.loc[one_mask, target_column]
+                if len(one_values) >= min_group_size:
+                    one_median = one_values.median()
+                    one_std = one_values.std()
+                    one_sem = one_std / np.sqrt(len(one_values))
+
+                    if ci_method == "bootstrap":
+                        boot = np.random.choice(
+                            one_values, (n_bootstrap, len(one_values))
+                        )
+                        boot_meds = np.median(boot, axis=1)
+                        lower = np.percentile(boot_meds, (100 - ci) / 2)
+                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    else:
+                        z = 1.96
+                        lower = one_median - z * one_sem
+                        upper = one_median + z * one_sem
+
+                    results.append(
+                        {
+                            "x": 1,
+                            "median": one_median,
+                            "count": len(one_values),
+                            "median_ci_lower": lower,
+                            "median_ci_upper": upper,
+                        }
+                    )
+
+                del one_mask, one_values
+                gc.collect()
+
+            else:
+                # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
+                values = subset[[group_column, target_column]].dropna()
+                
+                if len(values) > 0:
+                    grouped = values.groupby(group_column, observed=False)
+                    
+                    for ratio_val, group in grouped:
+                        if len(group) < min_group_size:
+                            continue
+                        
+                        median = group[target_column].median()
+                        std = group[target_column].std()
+                        sem = std / np.sqrt(len(group))
+                        
+                        if ci_method == "bootstrap":
+                            boot = np.random.choice(
+                                group[target_column], (n_bootstrap, len(group))
+                            )
+                            boot_meds = np.median(boot, axis=1)
+                            lower = np.percentile(boot_meds, (100 - ci) / 2)
+                            upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                        else:
+                            z = 1.96
+                            lower = median - z * sem
+                            upper = median + z * sem
+                        
+                        results.append(
+                            {
+                                "x": ratio_val,
+                                "median": median,
+                                "count": len(group),
+                                "median_ci_lower": lower,
+                                "median_ci_upper": upper,
+                            }
+                        )
 
             group_stats = pd.DataFrame(results)
 
@@ -593,8 +695,8 @@ def plot_team_size_by_career_ratios_grid(
                 data=filtered_stats,
                 color=colors[group_column],
                 marker=markers[group_column],
-                markersize=10,  # Increased from 6 to 10
-                linewidth=2.5,  # Increased from 1.5 to 2.5
+                markersize=10,
+                linewidth=2.5,
                 label=(
                     labels[group_column] if idx == 0 else None
                 ),  # Only add labels on first plot
@@ -602,13 +704,25 @@ def plot_team_size_by_career_ratios_grid(
             )
 
             if show_ci:
-                ax.fill_between(
-                    filtered_stats["x"],
-                    filtered_stats["median_ci_lower"],
-                    filtered_stats["median_ci_upper"],
-                    alpha=0.1,
-                    color=colors[group_column],
-                )
+                if use_binning:
+                    # For binned data: use fill_between for smooth CI bands
+                    ax.fill_between(
+                        filtered_stats["x"],
+                        filtered_stats["median_ci_lower"],
+                        filtered_stats["median_ci_upper"],
+                        alpha=0.1,
+                        color=colors[group_column],
+                    )
+                else:
+                    # For non-binned data: use error bars at each discrete point
+                    for _, row in filtered_stats.iterrows():
+                        ax.plot(
+                            [row["x"], row["x"]],
+                            [row["median_ci_lower"], row["median_ci_upper"]],
+                            color=colors[group_column],
+                            alpha=0.3,
+                            linewidth=1.5,
+                        )
 
             gc.collect()
 
@@ -646,8 +760,6 @@ def plot_team_size_by_career_ratios_grid(
     for ax in axes_flat:
         if ax.get_legend() is not None:
             ax.get_legend().remove()
-
-    # No need to hide subplots since we're using exactly 8 (2x4)
 
     # Add common axis labels
     fig.text(0.5, 0.01, "Author Ratio", ha="center", fontsize=18, fontweight="bold")
@@ -1346,8 +1458,6 @@ def plot_firsttime_authors_by_decade_grid(
     for ax in axes_flat:
         if ax.get_legend() is not None:
             ax.get_legend().remove()
-
-    # No need to hide subplots since we're using exactly 8 (2x4)
 
     # Add common axis labels
     fig.text(
@@ -2062,6 +2172,7 @@ def pnas_si_matrix_tables_from_heatmaps(
     return out
 
 
+@timer
 def plot_firsttime_authors_by_coauthor_disruption(
     df,
     target_column="disruption_percentile",
@@ -2178,10 +2289,11 @@ def plot_firsttime_authors_by_coauthor_disruption(
             del zero_mask, zero_values
             gc.collect()
 
-            # Handle non-zero values
-            values = group_subset[group_subset[author_ratio_column] > 0][
-                [author_ratio_column, target_column]
-            ].dropna()
+            # Handle values between 0 and 1
+            values = group_subset[
+                (group_subset[author_ratio_column] > 0)
+                & (group_subset[author_ratio_column] < 1)
+            ][[author_ratio_column, target_column]].dropna()
             if len(values) == 0:
                 continue
 
