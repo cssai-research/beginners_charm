@@ -19,7 +19,7 @@ from perform_statistical_analysis import (
     _bh_fdr,
     _bonferroni,
     _bootstrap_kendall_tau,
-    _pretty_axis_label, 
+    _pretty_axis_label,
     _bin_center_labels,
     _fmt_count,
 )
@@ -150,9 +150,9 @@ def plot_team_size_by_career_ratios_grid(
                 gc.collect()
 
                 # Handle values between 0 and 1
-                values = subset[(subset[group_column] > 0) & (subset[group_column] < 1)][
-                    [group_column, target_column]
-                ].dropna()
+                values = subset[
+                    (subset[group_column] > 0) & (subset[group_column] < 1)
+                ][[group_column, target_column]].dropna()
                 if len(values) == 0:
                     continue
 
@@ -244,18 +244,18 @@ def plot_team_size_by_career_ratios_grid(
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
                 values = subset[[group_column, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(group_column, observed=False)
-                    
+
                     for ratio_val, group in grouped:
                         if len(group) < min_group_size:
                             continue
-                        
+
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
-                        
+
                         if ci_method == "bootstrap":
                             boot = np.random.choice(
                                 group[target_column], (n_bootstrap, len(group))
@@ -267,7 +267,7 @@ def plot_team_size_by_career_ratios_grid(
                             z = 1.96
                             lower = median - z * sem
                             upper = median + z * sem
-                        
+
                         results.append(
                             {
                                 "x": ratio_val,
@@ -472,7 +472,9 @@ def kendall_tau_to_pnas_si_table_with_ci(
                     )
 
                 # Handle values between 0 and 1
-                pos = sub.loc[(sub[col] > 0) & (sub[col] < 1), [col, target_column]].dropna()
+                pos = sub.loc[
+                    (sub[col] > 0) & (sub[col] < 1), [col, target_column]
+                ].dropna()
                 if len(pos) > 0:
                     if binning_method == "equal":
                         edges = np.linspace(0, 1, n_bins + 1)
@@ -518,10 +520,10 @@ def kendall_tau_to_pnas_si_table_with_ci(
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
                 values = sub[[col, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(col, observed=False)
-                    
+
                     for ratio_val, g in grouped:
                         if len(g) < min_group_size:
                             continue
@@ -571,8 +573,8 @@ def kendall_tau_to_pnas_si_table_with_ci(
                     "ci_high": ci_hi,
                 }
             )
-            
-            if use_binning and 'pos' in locals() and len(pos) > 0:
+
+            if use_binning and "pos" in locals() and len(pos) > 0:
                 del pos
             gc.collect()
 
@@ -937,8 +939,6 @@ def plot_expanded_disruption_heatmaps(
     del all_values, vmin, vmax, norm, im, cbar
     gc.collect()
     return fig, axes, pivot_dfs
-
-
 
 
 def pnas_si_matrix_tables_from_heatmaps(

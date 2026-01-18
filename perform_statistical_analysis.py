@@ -60,7 +60,10 @@ def timer(func):
 
 @timer
 def load_full_disruption_data(
-    filepath="data/disruption_analysis.csv", chunksize=1000000, cached_df_path=None, merge_mid_career = True
+    filepath="data/disruption_analysis.csv",
+    chunksize=1000000,
+    cached_df_path=None,
+    merge_mid_career=True,
 ):
     # Check if cached version exists
     if cached_df_path is not None and os.path.exists(cached_df_path):
@@ -70,7 +73,7 @@ def load_full_disruption_data(
         print("Total Number of articles:", f"{len(df):,}")
         print("=" * 80)
         return df
-    
+
     print(f"Reading CSV in chunks from: {filepath}")
 
     required_cols = [
@@ -165,10 +168,7 @@ def load_full_disruption_data(
     df = df[df["year"] >= START_YEAR]
 
     df.drop(
-        columns=[
-            "decade_start",
-            "decade_end"
-        ],
+        columns=["decade_start", "decade_end"],
         inplace=True,
     )
     if merge_mid_career:
@@ -561,9 +561,9 @@ def plot_team_size_by_career_ratios_grid(
                 gc.collect()
 
                 # Handle values between 0 and 1
-                values = subset[(subset[group_column] > 0) & (subset[group_column] < 1)][
-                    [group_column, target_column]
-                ].dropna()
+                values = subset[
+                    (subset[group_column] > 0) & (subset[group_column] < 1)
+                ][[group_column, target_column]].dropna()
                 if len(values) == 0:
                     continue
 
@@ -655,18 +655,18 @@ def plot_team_size_by_career_ratios_grid(
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
                 values = subset[[group_column, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(group_column, observed=False)
-                    
+
                     for ratio_val, group in grouped:
                         if len(group) < min_group_size:
                             continue
-                        
+
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
-                        
+
                         if ci_method == "bootstrap":
                             boot = np.random.choice(
                                 group[target_column], (n_bootstrap, len(group))
@@ -678,7 +678,7 @@ def plot_team_size_by_career_ratios_grid(
                             z = 1.96
                             lower = median - z * sem
                             upper = median + z * sem
-                        
+
                         results.append(
                             {
                                 "x": ratio_val,
@@ -924,7 +924,9 @@ def kendall_tau_to_pnas_si_table_with_ci(
                     )
 
                 # Handle values between 0 and 1
-                pos = sub.loc[(sub[col] > 0) & (sub[col] < 1), [col, target_column]].dropna()
+                pos = sub.loc[
+                    (sub[col] > 0) & (sub[col] < 1), [col, target_column]
+                ].dropna()
                 if len(pos) > 0:
                     if binning_method == "equal":
                         edges = np.linspace(0, 1, n_bins + 1)
@@ -970,10 +972,10 @@ def kendall_tau_to_pnas_si_table_with_ci(
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
                 values = sub[[col, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(col, observed=False)
-                    
+
                     for ratio_val, g in grouped:
                         if len(g) < min_group_size:
                             continue
@@ -1369,9 +1371,10 @@ def plot_firsttime_authors_by_decade_grid(
                 gc.collect()
 
                 # Handle values between 0 and 1
-                values = decade_subset[(decade_subset[author_ratio_column] > 0) & (decade_subset[author_ratio_column] < 1)][
-                    [author_ratio_column, target_column]
-                ].dropna()
+                values = decade_subset[
+                    (decade_subset[author_ratio_column] > 0)
+                    & (decade_subset[author_ratio_column] < 1)
+                ][[author_ratio_column, target_column]].dropna()
                 if len(values) == 0:
                     continue
 
@@ -1462,18 +1465,18 @@ def plot_firsttime_authors_by_decade_grid(
 
             else:
                 values = decade_subset[[author_ratio_column, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(author_ratio_column, observed=False)
-                    
+
                     for ratio_val, group in grouped:
                         if len(group) < min_group_size:
                             continue
-                        
+
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
-                        
+
                         if ci_method == "bootstrap":
                             boot = np.random.choice(
                                 group[target_column], (n_bootstrap, len(group))
@@ -1485,7 +1488,7 @@ def plot_firsttime_authors_by_decade_grid(
                             z = 1.96
                             lower = median - z * sem
                             upper = median + z * sem
-                        
+
                         results.append(
                             {
                                 "x": ratio_val,
@@ -2504,21 +2507,22 @@ def plot_firsttime_authors_by_coauthor_disruption(
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
                 values = group_subset[[author_ratio_column, target_column]].dropna()
-                
+
                 if len(values) > 0:
                     grouped = values.groupby(author_ratio_column, observed=False)
-                    
+
                     for ratio_val, group_data in grouped:
                         if len(group_data) < min_group_size:
                             continue
-                        
+
                         median = group_data[target_column].median()
                         std = group_data[target_column].std()
                         sem = std / np.sqrt(len(group_data))
-                        
+
                         if ci_method == "bootstrap":
                             boot = np.random.choice(
-                                group_data[target_column], (n_bootstrap, len(group_data))
+                                group_data[target_column],
+                                (n_bootstrap, len(group_data)),
                             )
                             boot_meds = np.median(boot, axis=1)
                             lower = np.percentile(boot_meds, (100 - ci) / 2)
@@ -2527,7 +2531,7 @@ def plot_firsttime_authors_by_coauthor_disruption(
                             z = 1.96
                             lower = median - z * sem
                             upper = median + z * sem
-                        
+
                         results.append(
                             {
                                 "x": ratio_val,
@@ -2654,7 +2658,6 @@ def plot_firsttime_authors_by_coauthor_disruption(
     # Save figure if path is provided
     if save_path:
         plt.savefig(save_path, bbox_inches="tight", dpi=300)
-
 
     plt.close(fig)
     gc.collect()
