@@ -185,7 +185,7 @@ def load_full_disruption_data(
         columns=["decade_start", "decade_end"],
         inplace=True,
     )
-    
+
     # --- Percentiles ---
     for col in [
         "disruption",
@@ -274,7 +274,9 @@ def load_full_disruption_data(
     return df
 
 
-def find_correlation_coefficient(df, column_1, column_2, column_3=None, save_folder = "Final_Figures"):
+def find_correlation_coefficient(
+    df, column_1, column_2, column_3=None, save_folder="Final_Figures"
+):
     """
     Calculate correlation coefficients (Pearson, Spearman, Kendall) between two variables
     with optional grouping by a third variable, and save results to CSV.
