@@ -60,7 +60,7 @@ def timer(func):
 
 @timer
 def load_full_disruption_data(
-    filepath="data/disruption_analysis.csv", chunksize=1000000, cached_df_path=None
+    filepath="data/disruption_analysis.csv", chunksize=1000000, cached_df_path=None, merge_mid_career = True
 ):
     # Check if cached version exists
     if cached_df_path is not None and os.path.exists(cached_df_path):
@@ -147,18 +147,19 @@ def load_full_disruption_data(
         )
     ]
 
-    # In the preperation script early_career = 1-5 and mid_career = 6-10
-    # In analysis we will use early_career = 1-10
-    df["early_career_author_ratio"] = (
-        df["early_career_author_ratio"] + df["mid_career_author_ratio"]
-    )
+    if merge_mid_career:
+        # In the preperation script early_career = 1-5 and mid_career = 6-10
+        # In analysis we will use early_career = 1-10
+        df["early_career_author_ratio"] = (
+            df["early_career_author_ratio"] + df["mid_career_author_ratio"]
+        )
 
-    df["early_author_avg_disruption"] = np.where(
-        df["early_author_avg_disruption"].isna()
-        | df["mid_author_avg_disruption"].isna(),
-        np.nan,
-        (df["early_author_avg_disruption"] + df["mid_author_avg_disruption"]) / 2,
-    )
+        df["early_author_avg_disruption"] = np.where(
+            df["early_author_avg_disruption"].isna()
+            | df["mid_author_avg_disruption"].isna(),
+            np.nan,
+            (df["early_author_avg_disruption"] + df["mid_author_avg_disruption"]) / 2,
+        )
 
     print(f"Starting year filtering... Keeping articles from {START_YEAR}")
     df = df[df["year"] >= START_YEAR]
@@ -166,12 +167,18 @@ def load_full_disruption_data(
     df.drop(
         columns=[
             "decade_start",
-            "decade_end",
-            "mid_career_author_ratio",
-            "mid_author_avg_disruption",
+            "decade_end"
         ],
         inplace=True,
     )
+    if merge_mid_career:
+        df.drop(
+            columns=[
+                "mid_career_author_ratio",
+                "mid_author_avg_disruption",
+            ],
+            inplace=True,
+        )
 
     # --- Percentiles ---
     for col in [
@@ -240,6 +247,8 @@ def load_full_disruption_data(
     df.first_time_author_ratio = df.first_time_author_ratio.round(4)
     df.early_career_author_ratio = df.early_career_author_ratio.round(4)
     df.senior_author_ratio = df.senior_author_ratio.round(4)
+    if not merge_mid_career:
+        df.mid_career_author_ratio = df.mid_career_author_ratio.round(4)
 
     gc.collect()
 
