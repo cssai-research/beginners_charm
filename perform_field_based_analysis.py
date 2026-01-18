@@ -64,8 +64,7 @@ def plot_firsttime_authors_by_field_grid(
             f"None of the specified fields found in the data. Available fields: {sorted(df[field_column].unique())}"
         )
 
-    # Use Tab10 color palette for fields
-    colors = sns.color_palette("tab10", n_colors=len(fields))
+    colors = sns.color_palette("tab20", n_colors=len(fields))
     field_colors = {field: colors[i] for i, field in enumerate(fields)}
 
     markers = {field: "o" for field in fields}
@@ -348,11 +347,12 @@ def plot_firsttime_authors_by_field_grid(
     legend = fig.legend(
         handles,
         labels_list,
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0.02),
-        ncol=min(len(fields), 4),  # Limit to 4 columns for better readability
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.02),  # Move legend below the figure
+        ncol=min(len(fields), 5),  # Increase columns for better fit
         frameon=True,
-        fontsize=14,
+        fontsize=12,  # Slightly smaller font
+        columnspacing=1.0,  # Add some spacing between columns
     )
 
     # Remove individual legends

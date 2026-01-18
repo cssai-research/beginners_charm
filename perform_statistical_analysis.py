@@ -101,6 +101,7 @@ def load_full_disruption_data(
         "level_0_field_names",
         "level_1_field_names",
         "first_time_author_count",
+        "mid_career_author_count",
         "early_career_author_count",
         "senior_author_count",
     ]
@@ -164,6 +165,19 @@ def load_full_disruption_data(
             (df["early_author_avg_disruption"] + df["mid_author_avg_disruption"]) / 2,
         )
 
+        df["early_career_author_count"] = (
+            df["early_career_author_count"] + df["mid_career_author_count"]
+        )
+
+        df.drop(
+            columns=[
+                "mid_career_author_ratio",
+                "mid_author_avg_disruption",
+                "mid_career_author_count",
+            ],
+            inplace=True,
+        )
+
     print(f"Starting year filtering... Keeping articles from {START_YEAR}")
     df = df[df["year"] >= START_YEAR]
 
@@ -171,15 +185,7 @@ def load_full_disruption_data(
         columns=["decade_start", "decade_end"],
         inplace=True,
     )
-    if merge_mid_career:
-        df.drop(
-            columns=[
-                "mid_career_author_ratio",
-                "mid_author_avg_disruption",
-            ],
-            inplace=True,
-        )
-
+    
     # --- Percentiles ---
     for col in [
         "disruption",
@@ -268,7 +274,7 @@ def load_full_disruption_data(
     return df
 
 
-def find_correlation_coefficient(df, column_1, column_2, column_3=None):
+def find_correlation_coefficient(df, column_1, column_2, column_3=None, save_folder = "Final_Figures"):
     """
     Calculate correlation coefficients (Pearson, Spearman, Kendall) between two variables
     with optional grouping by a third variable, and save results to CSV.
@@ -401,7 +407,7 @@ def find_correlation_coefficient(df, column_1, column_2, column_3=None):
         results_df[col] = results_df[col].round(8)
 
     # Create Final_Figures folder if it doesn't exist
-    os.makedirs("Final_Figures", exist_ok=True)
+    os.makedirs(save_folder, exist_ok=True)
 
     # Generate filename
     if column_3:
@@ -410,7 +416,7 @@ def find_correlation_coefficient(df, column_1, column_2, column_3=None):
         filename = f"{column_1}_{column_2}_correlation.csv"
 
     # Save to CSV
-    filepath = os.path.join("Final_Figures", filename)
+    filepath = os.path.join(save_folder, filename)
     results_df.to_csv(filepath, index=False)
     print(f"Results saved to: {filepath}")
 
@@ -443,7 +449,7 @@ def setup_plotting_style_mahdee():
 
 
 def setup_plotting_style():
-    sns.set_theme(context="talk", style="whitegrid")
+    sns.set_theme(context="talk", style="white")
 
 
 @timer
@@ -1276,7 +1282,7 @@ def plot_firsttime_authors_by_decade_grid(
     decade_column="decade",
     author_ratio_column="first_time_author_ratio",
     min_group_size=5,
-    min_sample_threshold=50,
+    min_sample_threshold=250,
     n_bins=10,
     ci=95,
     ylim=(10, 80),

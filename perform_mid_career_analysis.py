@@ -1351,7 +1351,7 @@ def main():
     )
     print("Correlation between first_time_author_ratio and disruption:")
     corr_result = find_correlation_coefficient(
-        final_df, "first_time_author_ratio", "disruption_percentile"
+        final_df, "first_time_author_ratio", "disruption_percentile", save_folder="MidCareer_Figures"
     )
     print(corr_result)
     del corr_result
@@ -1359,7 +1359,7 @@ def main():
 
     print("Correlation between early_career_author_ratio and disruption:")
     corr_result = find_correlation_coefficient(
-        final_df, "early_career_author_ratio", "disruption_percentile"
+        final_df, "early_career_author_ratio", "disruption_percentile", save_folder="MidCareer_Figures"
     )
     print(corr_result)
     del corr_result
@@ -1367,7 +1367,7 @@ def main():
 
     print("Correlation between mid_career_author_ratio and disruption:")
     corr_result = find_correlation_coefficient(
-        final_df, "mid_career_author_ratio", "disruption_percentile"
+        final_df, "mid_career_author_ratio", "disruption_percentile", save_folder="MidCareer_Figures"
     )
     print(corr_result)
     del corr_result
@@ -1375,7 +1375,7 @@ def main():
 
     print("Correlation between senior_author_ratio and disruption:")
     corr_result = find_correlation_coefficient(
-        final_df, "senior_author_ratio", "disruption_percentile"
+        final_df, "senior_author_ratio", "disruption_percentile", save_folder="MidCareer_Figures"
     )
     print(corr_result)
     del corr_result
