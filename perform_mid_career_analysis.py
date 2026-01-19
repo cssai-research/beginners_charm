@@ -37,7 +37,6 @@ def plot_team_size_by_career_ratios_grid(
     df,
     target_column="disruption_percentile",
     career_columns=None,
-    min_group_size=5,
     min_sample_threshold=50,
     n_bins=10,
     ci=95,
@@ -119,32 +118,31 @@ def plot_team_size_by_career_ratios_grid(
                 # Handle zero values separately
                 zero_mask = subset[group_column] == 0
                 zero_values = subset.loc[zero_mask, target_column]
-                if len(zero_values) >= min_group_size:
-                    zero_median = zero_values.median()
-                    zero_std = zero_values.std()
-                    zero_sem = zero_std / np.sqrt(len(zero_values))
+                zero_median = zero_values.median()
+                zero_std = zero_values.std()
+                zero_sem = zero_std / np.sqrt(len(zero_values))
 
-                    if ci_method == "bootstrap":
-                        boot = np.random.choice(
-                            zero_values, (n_bootstrap, len(zero_values))
-                        )
-                        boot_meds = np.median(boot, axis=1)
-                        lower = np.percentile(boot_meds, (100 - ci) / 2)
-                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                    else:
-                        z = 1.96
-                        lower = zero_median - z * zero_sem
-                        upper = zero_median + z * zero_sem
-
-                    results.append(
-                        {
-                            "x": 0,
-                            "median": zero_median,
-                            "count": len(zero_values),
-                            "median_ci_lower": lower,
-                            "median_ci_upper": upper,
-                        }
+                if ci_method == "bootstrap":
+                    boot = np.random.choice(
+                        zero_values, (n_bootstrap, len(zero_values))
                     )
+                    boot_meds = np.median(boot, axis=1)
+                    lower = np.percentile(boot_meds, (100 - ci) / 2)
+                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                else:
+                    z = 1.96
+                    lower = zero_median - z * zero_sem
+                    upper = zero_median + z * zero_sem
+
+                results.append(
+                    {
+                        "x": 0,
+                        "median": zero_median,
+                        "count": len(zero_values),
+                        "median_ci_lower": lower,
+                        "median_ci_upper": upper,
+                    }
+                )
 
                 del zero_mask, zero_values
                 gc.collect()
@@ -170,9 +168,6 @@ def plot_team_size_by_career_ratios_grid(
                 grouped = values.groupby("bin", observed=False)
 
                 for bin_interval, group in grouped:
-                    if len(group) < min_group_size:
-                        continue
-
                     median = group[target_column].median()
                     std = group[target_column].std()
                     sem = std / np.sqrt(len(group))
@@ -211,32 +206,31 @@ def plot_team_size_by_career_ratios_grid(
                 # Handle one values separately
                 one_mask = subset[group_column] == 1
                 one_values = subset.loc[one_mask, target_column]
-                if len(one_values) >= min_group_size:
-                    one_median = one_values.median()
-                    one_std = one_values.std()
-                    one_sem = one_std / np.sqrt(len(one_values))
+                one_median = one_values.median()
+                one_std = one_values.std()
+                one_sem = one_std / np.sqrt(len(one_values))
 
-                    if ci_method == "bootstrap":
-                        boot = np.random.choice(
-                            one_values, (n_bootstrap, len(one_values))
-                        )
-                        boot_meds = np.median(boot, axis=1)
-                        lower = np.percentile(boot_meds, (100 - ci) / 2)
-                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                    else:
-                        z = 1.96
-                        lower = one_median - z * one_sem
-                        upper = one_median + z * one_sem
-
-                    results.append(
-                        {
-                            "x": 1,
-                            "median": one_median,
-                            "count": len(one_values),
-                            "median_ci_lower": lower,
-                            "median_ci_upper": upper,
-                        }
+                if ci_method == "bootstrap":
+                    boot = np.random.choice(
+                        one_values, (n_bootstrap, len(one_values))
                     )
+                    boot_meds = np.median(boot, axis=1)
+                    lower = np.percentile(boot_meds, (100 - ci) / 2)
+                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                else:
+                    z = 1.96
+                    lower = one_median - z * one_sem
+                    upper = one_median + z * one_sem
+
+                results.append(
+                    {
+                        "x": 1,
+                        "median": one_median,
+                        "count": len(one_values),
+                        "median_ci_lower": lower,
+                        "median_ci_upper": upper,
+                    }
+                )
 
                 del one_mask, one_values
                 gc.collect()
@@ -249,9 +243,6 @@ def plot_team_size_by_career_ratios_grid(
                     grouped = values.groupby(group_column, observed=False)
 
                     for ratio_val, group in grouped:
-                        if len(group) < min_group_size:
-                            continue
-
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
@@ -391,7 +382,6 @@ def kendall_tau_to_pnas_si_table_with_ci(
     df,
     target_column="disruption_percentile",
     career_columns=None,
-    min_group_size=5,
     min_sample_threshold=50,
     n_bins=10,
     binning_method="equal",  # "equal" or "quantile"
@@ -462,14 +452,13 @@ def kendall_tau_to_pnas_si_table_with_ci(
             if use_binning:
                 # Handle x = 0 bucket
                 zero_vals = sub.loc[sub[col] == 0, target_column].dropna()
-                if len(zero_vals) >= min_group_size:
-                    pts.append(
-                        {
-                            "x": 0.0,
-                            "median": float(zero_vals.median()),
-                            "count": int(len(zero_vals)),
-                        }
-                    )
+                pts.append(
+                    {
+                        "x": 0.0,
+                        "median": float(zero_vals.median()),
+                        "count": int(len(zero_vals)),
+                    }
+                )
 
                 # Handle values between 0 and 1
                 pos = sub.loc[
@@ -482,8 +471,6 @@ def kendall_tau_to_pnas_si_table_with_ci(
                         pos["bin"] = pd.cut(pos[col], bins=edges, include_lowest=True)
                         grouped = pos.groupby("bin", observed=False)
                         for interval, g in grouped:
-                            if len(g) < min_group_size:
-                                continue
                             pts.append(
                                 {
                                     "x": float(interval.mid),
@@ -496,8 +483,6 @@ def kendall_tau_to_pnas_si_table_with_ci(
                         pos["bin"] = pd.qcut(pos[col], q=n_bins, duplicates="drop")
                         grouped = pos.groupby("bin", observed=False)
                         for _, g in grouped:
-                            if len(g) < min_group_size:
-                                continue
                             pts.append(
                                 {
                                     "x": float(g[col].median()),
@@ -508,14 +493,13 @@ def kendall_tau_to_pnas_si_table_with_ci(
 
                 # Handle x = 1 bucket
                 one_vals = sub.loc[sub[col] == 1, target_column].dropna()
-                if len(one_vals) >= min_group_size:
-                    pts.append(
-                        {
-                            "x": 1.0,
-                            "median": float(one_vals.median()),
-                            "count": int(len(one_vals)),
-                        }
-                    )
+                pts.append(
+                    {
+                        "x": 1.0,
+                        "median": float(one_vals.median()),
+                        "count": int(len(one_vals)),
+                    }
+                )
 
             else:
                 # NEW LOGIC FOR TEAM SIZES 1-7: Use raw ratio values without binning
@@ -525,8 +509,6 @@ def kendall_tau_to_pnas_si_table_with_ci(
                     grouped = values.groupby(col, observed=False)
 
                     for ratio_val, g in grouped:
-                        if len(g) < min_group_size:
-                            continue
                         pts.append(
                             {
                                 "x": float(ratio_val),
@@ -1407,7 +1389,6 @@ def main():
     res_df, latex = kendall_tau_to_pnas_si_table_with_ci(
         df=final_df,
         target_column="disruption_percentile",
-        min_group_size=5,
         min_sample_threshold=50,
         n_bins=10,
         binning_method="equal",
