@@ -26,7 +26,6 @@ def plot_firsttime_authors_by_field_grid(
     target_column="disruption_percentile",
     field_column="field_name",
     author_ratio_column="first_time_author_ratio",
-    min_group_size=5,
     min_sample_threshold=50,
     n_bins=10,
     ci=95,
@@ -110,33 +109,32 @@ def plot_firsttime_authors_by_field_grid(
                 # Handle zero values separately
                 zero_mask = field_subset[author_ratio_column] == 0
                 zero_values = field_subset.loc[zero_mask, target_column]
-                if len(zero_values) >= min_group_size:
-                    zero_median = zero_values.median()
-                    zero_std = zero_values.std()
-                    zero_sem = zero_std / np.sqrt(len(zero_values))
+                zero_median = zero_values.median()
+                zero_std = zero_values.std()
+                zero_sem = zero_std / np.sqrt(len(zero_values))
 
-                    if ci_method == "bootstrap":
-                        boot = np.random.choice(
-                            zero_values, (n_bootstrap, len(zero_values))
-                        )
-                        boot_meds = np.median(boot, axis=1)
-                        lower = np.percentile(boot_meds, (100 - ci) / 2)
-                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                        del boot, boot_meds
-                    else:
-                        z = 1.96
-                        lower = zero_median - z * zero_sem
-                        upper = zero_median + z * zero_sem
-
-                    results.append(
-                        {
-                            "x": 0,
-                            "median": zero_median,
-                            "count": len(zero_values),
-                            "median_ci_lower": lower,
-                            "median_ci_upper": upper,
-                        }
+                if ci_method == "bootstrap":
+                    boot = np.random.choice(
+                        zero_values, (n_bootstrap, len(zero_values))
                     )
+                    boot_meds = np.median(boot, axis=1)
+                    lower = np.percentile(boot_meds, (100 - ci) / 2)
+                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    del boot, boot_meds
+                else:
+                    z = 1.96
+                    lower = zero_median - z * zero_sem
+                    upper = zero_median + z * zero_sem
+
+                results.append(
+                    {
+                        "x": 0,
+                        "median": zero_median,
+                        "count": len(zero_values),
+                        "median_ci_lower": lower,
+                        "median_ci_upper": upper,
+                    }
+                )
 
                 del zero_mask, zero_values
                 gc.collect()
@@ -167,9 +165,6 @@ def plot_firsttime_authors_by_field_grid(
                     grouped = values.groupby("bin", observed=False)
 
                     for bin_interval, group in grouped:
-                        if len(group) < min_group_size:
-                            continue
-
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
@@ -209,33 +204,32 @@ def plot_firsttime_authors_by_field_grid(
                 # Handle one values separately
                 one_mask = field_subset[author_ratio_column] == 1
                 one_values = field_subset.loc[one_mask, target_column]
-                if len(one_values) >= min_group_size:
-                    one_median = one_values.median()
-                    one_std = one_values.std()
-                    one_sem = one_std / np.sqrt(len(one_values))
+                one_median = one_values.median()
+                one_std = one_values.std()
+                one_sem = one_std / np.sqrt(len(one_values))
 
-                    if ci_method == "bootstrap":
-                        boot = np.random.choice(
-                            one_values, (n_bootstrap, len(one_values))
-                        )
-                        boot_meds = np.median(boot, axis=1)
-                        lower = np.percentile(boot_meds, (100 - ci) / 2)
-                        upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
-                        del boot, boot_meds
-                    else:
-                        z = 1.96
-                        lower = one_median - z * one_sem
-                        upper = one_median + z * one_sem
-
-                    results.append(
-                        {
-                            "x": 1,
-                            "median": one_median,
-                            "count": len(one_values),
-                            "median_ci_lower": lower,
-                            "median_ci_upper": upper,
-                        }
+                if ci_method == "bootstrap":
+                    boot = np.random.choice(
+                        one_values, (n_bootstrap, len(one_values))
                     )
+                    boot_meds = np.median(boot, axis=1)
+                    lower = np.percentile(boot_meds, (100 - ci) / 2)
+                    upper = np.percentile(boot_meds, 100 - (100 - ci) / 2)
+                    del boot, boot_meds
+                else:
+                    z = 1.96
+                    lower = one_median - z * one_sem
+                    upper = one_median + z * one_sem
+
+                results.append(
+                    {
+                        "x": 1,
+                        "median": one_median,
+                        "count": len(one_values),
+                        "median_ci_lower": lower,
+                        "median_ci_upper": upper,
+                    }
+                )
 
                 del one_mask, one_values
                 gc.collect()
@@ -248,9 +242,6 @@ def plot_firsttime_authors_by_field_grid(
                     grouped = values.groupby(author_ratio_column, observed=False)
 
                     for ratio_val, group in grouped:
-                        if len(group) < min_group_size:
-                            continue
-
                         median = group[target_column].median()
                         std = group[target_column].std()
                         sem = std / np.sqrt(len(group))
