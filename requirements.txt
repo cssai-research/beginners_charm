@@ -1,21 +1,52 @@
-# GCP BigQuery
+# ============================================================
+# Google Cloud / BigQuery preprocessing
+# ============================================================
+
 google-cloud-bigquery
 google-cloud-bigquery-storage
 google-cloud-storage
 db-dtypes
 
-# Data manipulation
+
+# ============================================================
+# Core data processing
+# ============================================================
+
 numpy
-scipy
-scikit-learn
 pandas
-matplotlib
-seaborn
-tabulate
+polars
+pyarrow
+duckdb
+psutil
+
+
+# ============================================================
+# Statistical analysis
+# ============================================================
+
+scipy
 statsmodels
 
-# Notebook tools
+
+# ============================================================
+# Visualization
+# ============================================================
+
+matplotlib
+
+
+# ============================================================
+# SciSciNet-v2 download / Hugging Face access
+# ============================================================
+
+huggingface_hub
+hf_xet
+
+
+# ============================================================
+# Jupyter notebooks
+# ============================================================
+
 jupyter
 jupyterlab
-tqdm
-ipywidgets
+ipykernel

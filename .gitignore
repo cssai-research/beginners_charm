@@ -140,3 +140,32 @@ intermediate_data/
 out_df_filtered.csv
 
 temp.*
+
+# Local analysis data
+data/*
+!data/README.md
+
+# Generated analysis outputs
+results/
+outputs/
+Reanalysis_Results_v9/
+
+# Large data products and caches
+*.parquet
+*.duckdb
+*.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+
+# Secrets and local configuration
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
